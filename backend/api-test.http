@@ -1,0 +1,9 @@
+### 注册测试
+POST http://localhost:8080/auth/register
+Content-Type: application/json
+
+{
+    "username": "student1",
+    "password": "123456",
+    "realName": "张同学"
+}

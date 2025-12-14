@@ -1,0 +1,25 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: education-system
+  datasource:
+    # 替换你的数据库密码
+    url: jdbc:mysql://localhost:3306/online_education?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    username: root 
+    password: root 
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update # 开发阶段自动更新表结构，生产环境建议用 validate
+    show-sql: true # 控制台打印SQL，方便调试
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
+# 暂时关闭 Security 的默认登录拦截，方便第一阶段调试
+security:
+  basic:
+    enabled: false
