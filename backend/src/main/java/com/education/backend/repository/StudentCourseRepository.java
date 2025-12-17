@@ -11,4 +11,6 @@ public interface StudentCourseRepository extends JpaRepository<StudentCourse, In
     
     // 查某人选了哪些课
     List<StudentCourse> findByUserId(Integer userId);
+    // 👇 新增：查某门课的所有选课记录
+    List<StudentCourse> findByCourseId(Integer courseId);
 }

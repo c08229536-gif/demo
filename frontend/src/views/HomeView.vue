@@ -31,6 +31,14 @@
             <el-icon><Monitor /></el-icon>
             <span>教师批改</span>
           </el-menu-item>
+          <el-menu-item index="/home/users" v-if="userRole === 'admin' || userRole === 'ADMIN'">
+            <el-icon><Setting /></el-icon>
+            <span>用户管理</span>
+          </el-menu-item>
+          <el-menu-item index="/home/audit" v-if="userRole === 'admin' || userRole === 'ADMIN'">
+          <el-icon><Stamp /></el-icon>
+          <span>课程审核</span>
+          </el-menu-item>
         </el-menu>
       </el-aside>
 
@@ -54,7 +62,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue' // 必须导入 ref 和 onMounted
-import { Reading, DataLine, EditPen, User, Monitor } from '@element-plus/icons-vue'
+import { Reading, DataLine, EditPen, User, Monitor, Setting, Stamp} from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import axios from 'axios'

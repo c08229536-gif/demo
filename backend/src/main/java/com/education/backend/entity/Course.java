@@ -22,4 +22,14 @@ public class Course {
     
     // 对应数据库的 description 列
     private String description;
+
+    // 0:待审核, 1:已发布, 2:已驳回
+    private Integer status = 0;
+
+    @Transient
+    private Double rating; // 平均评分
+
+    private String category; 
+
+    
 }

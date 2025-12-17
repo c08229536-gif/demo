@@ -2,57 +2,170 @@
   <div class="profile-container">
     <h2>👤 个人中心</h2>
 
-    <el-card class="profile-card">
-      <div class="user-header">
-        <el-avatar :size="100" src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png" />
-        <h3 class="username">{{ userInfo.realName }}</h3>
-        
-        <p class="role">
-          角色：
-          <el-tag v-if="userInfo.role === 'teacher' || userInfo.role === 'TEACHER'" type="warning">教师</el-tag>
-          <el-tag v-else-if="userInfo.role === 'admin' || userInfo.role === 'ADMIN'" type="danger">管理员</el-tag>
-          <el-tag v-else type="success">学生</el-tag>
-        </p>
-        </div>
+    <el-row :gutter="20" style="width: 100%; max-width: 900px;">
+      <el-col :span="10">
+        <el-card class="profile-card">
+          <div class="user-header">
+            <el-avatar :size="100" src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png" />
+            
+            <h3 class="username">{{ userInfo.realName }}</h3>
+            
+            <p class="role">
+              <el-tag v-if="userInfo.role === 'teacher'" type="warning">教师</el-tag>
+              <el-tag v-else-if="userInfo.role === 'admin'" type="danger">管理员</el-tag>
+              <el-tag v-else type="success">学生</el-tag>
+            </p>
+          </div>
+          
+          <el-divider />
+          
+          <el-descriptions :column="1" border>
+            <el-descriptions-item :label="accountLabel">
+              {{ userInfo.username }}
+            </el-descriptions-item>
 
-      <el-divider />
+            <el-descriptions-item label="手机号">
+              {{ userInfo.phone || '未填写' }}
+            </el-descriptions-item>
+            
+            <el-descriptions-item label="邮箱">
+              {{ userInfo.email || '未填写' }}
+            </el-descriptions-item>
+            
+            <el-descriptions-item label="注册时间">
+              {{ userInfo.createTime ? userInfo.createTime.substring(0, 10) : '-' }}
+            </el-descriptions-item>
+          </el-descriptions>
+
+          <div style="margin-top: 20px; text-align: center;">
+             <el-button type="primary" @click="openEditDialog">编辑资料</el-button>
+          </div>
+        </el-card>
+      </el-col>
+
+      <el-col :span="14">
+        <el-card class="stat-card">
+          <template #header><h3>📊 学习数据</h3></template>
+          
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <div class="stat-item">
+                <div class="stat-value">{{ stats.courseCount }}</div>
+                <div class="stat-label">加入课程</div>
+              </div>
+            </el-col>
+            <el-col :span="12">
+              <div class="stat-item">
+                <div class="stat-value">{{ stats.assignmentCount }}</div>
+                <div class="stat-label">提交作业</div>
+              </div>
+            </el-col>
+          </el-row>
+
+          <el-divider />
+          
+          <div v-if="userInfo.role === 'student'" style="text-align: center; color: #666;">
+            <p>“学习是最好的投资。”</p>
+            <el-button type="primary" plain round @click="$router.push('/home/courses')">去选课</el-button>
+          </div>
+          <div v-else style="text-align: center; color: #666;">
+            <p>感谢您的辛勤付出！</p>
+          </div>
+
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <el-dialog v-model="dialogVisible" title="编辑个人资料" width="400px">
+      <el-form label-width="60px">
+        <el-form-item label="手机">
+          <el-input v-model="editForm.phone" placeholder="请输入手机号" />
+        </el-form-item>
+        
+        <el-form-item label="邮箱">
+          <el-input v-model="editForm.email" placeholder="请输入邮箱" />
+        </el-form-item>
+      </el-form>
       
-      <el-descriptions title="详细资料" :column="1" border>
-        <el-descriptions-item label="用户名">
-          {{ userInfo.username }}
-        </el-descriptions-item>
-        <el-descriptions-item label="真实姓名">
-          {{ userInfo.realName }}
-        </el-descriptions-item>
-        <el-descriptions-item label="账号状态">
-          <el-tag type="success">正常使用中</el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="注册时间">
-          {{ userInfo.createTime ? userInfo.createTime.replace('T', ' ') : '暂无数据' }}
-        </el-descriptions-item>
-      </el-descriptions>
-      
-      <div style="margin-top: 30px; text-align: center;">
-         <el-button type="warning" disabled>修改密码 (暂未开放)</el-button>
-      </div>
-    </el-card>
+      <template #footer>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleUpdate">保存</el-button>
+      </template>
+    </el-dialog>
+
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, reactive, computed } from 'vue'
 import axios from 'axios'
+import { ElMessage } from 'element-plus'
 
 const userInfo = ref({})
+const stats = ref({ courseCount: 0, assignmentCount: 0 })
+const dialogVisible = ref(false)
 
-// 获取我的信息
+// 编辑表单数据 (只包含允许修改的字段)
+const editForm = reactive({
+  phone: '',
+  email: ''
+})
+
+// 👇 计算属性：根据角色决定显示“学号”还是“工号”
+const accountLabel = computed(() => {
+  if (userInfo.value.role === 'student') return '学号'
+  if (userInfo.value.role === 'teacher') return '工号'
+  return '账号'
+})
+
+// 获取个人信息
 const fetchMyInfo = async () => {
   try {
-    // 调用刚才写的 /auth/me 接口
     const res = await axios.get('/api/auth/me')
     userInfo.value = res.data
+    
+    // 如果不是管理员，顺便查一下统计数据
+    if (res.data.role !== 'admin') {
+      fetchStats()
+    }
   } catch (error) {
-    console.error('获取个人信息失败', error)
+    console.error('获取信息失败', error)
+  }
+}
+
+// 获取统计数据
+const fetchStats = async () => {
+  try {
+    // 并行请求两个接口
+    const [cRes, aRes] = await Promise.all([
+      axios.get('/api/course/my-courses'),
+      axios.get('/api/assignment/my-list')
+    ])
+    stats.value.courseCount = cRes.data.length
+    stats.value.assignmentCount = aRes.data.filter(a => a.status === '已提交').length
+  } catch (error) {
+    console.error('统计获取失败', error)
+  }
+}
+
+// 打开编辑弹窗
+const openEditDialog = () => {
+  // 回填现有数据
+  editForm.phone = userInfo.value.phone
+  editForm.email = userInfo.value.email
+  dialogVisible.value = true
+}
+
+// 提交修改
+const handleUpdate = async () => {
+  try {
+    // 调用更新接口
+    await axios.post('/api/auth/update', editForm)
+    ElMessage.success('资料保存成功')
+    dialogVisible.value = false
+    fetchMyInfo() // 刷新页面显示
+  } catch (error) {
+    ElMessage.error('保存失败')
   }
 }
 
@@ -64,13 +177,11 @@ onMounted(() => {
 <style scoped>
 .profile-container {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px;
+  justify-content: center;
+  padding: 40px 20px;
 }
 .profile-card {
-  width: 600px;
-  margin-top: 20px;
+  min-height: 400px;
 }
 .user-header {
   text-align: center;
@@ -81,7 +192,31 @@ onMounted(() => {
   font-size: 24px;
 }
 .role {
-  color: #999;
+  margin-bottom: 0;
+}
+
+.stat-card {
+  min-height: 400px;
+}
+.stat-item {
+  text-align: center;
+  padding: 20px 0;
+  background: #f8f9fa;
+  border-radius: 8px;
+  transition: all 0.3s;
+}
+.stat-item:hover {
+  background: #ecf5ff;
+  transform: translateY(-2px);
+}
+.stat-value {
+  font-size: 36px;
+  font-weight: bold;
+  color: #409EFF;
+}
+.stat-label {
+  color: #909399;
   font-size: 14px;
+  margin-top: 5px;
 }
 </style>

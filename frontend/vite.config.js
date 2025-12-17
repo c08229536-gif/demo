@@ -23,6 +23,11 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '') // 去掉 /api 前缀再发给后端
+      },
+      '/uploads': {
+        target: 'http://localhost:8080', // 后端地址
+        changeOrigin: true
+        // 注意：这里不需要 rewrite，因为后端确实就是映射的 /uploads 路径
       }
     }
   }

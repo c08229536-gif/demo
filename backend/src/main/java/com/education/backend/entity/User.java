@@ -49,8 +49,11 @@ public class User {
     private String role; // [cite: 76]
 
     private String avatar;   // [cite: 77]
-
-
+    private String phone;
+    private String email;
+    
+    @Column(name = "student_no")
+    private String studentNo;
 
     @Column(name = "create_time")
 

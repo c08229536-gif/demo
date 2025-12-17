@@ -40,12 +40,36 @@ const router = createRouter({
         },
         { path: 'grade', 
           component: () => import('../views/GradeAssignment.vue')
+        },
+        {
+          path: 'users',
+          component: () => import('../views/UserManage.vue')
+        }, 
+        {
+          path: 'audit',
+          component: () => import('../views/AdminCourseAudit.vue')
         }
       ]
     }
-
-
   ]
 })
+router.beforeEach((to, from, next) => {
+  const role = localStorage.getItem('userRole') // 登录时我们存过这个
 
+  // 1. 如果去管理员页面，但身份不是 admin -> 踢回首页
+  if (to.path.includes('/audit') || to.path.includes('/users')) {
+    if (role !== 'admin' && role !== 'ADMIN') {
+      return next('/home/courses')
+    }
+  }
+
+  // 2. 如果去教师批改页，但身份是学生 -> 踢回首页
+  if (to.path.includes('/grade') || to.path.includes('/add')) { // 假设发布页叫 add
+    if (role === 'student') {
+      return next('/home/courses')
+    }
+  }
+
+  next()
+})
 export default router

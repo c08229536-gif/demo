@@ -20,8 +20,15 @@ public class HomeworkSubmission {
 
     private String content; // 作业内容
 
+    @Column(name = "image_url")
+    private String imageUrl;
+
     @Column(name = "submit_time")
     private LocalDateTime submitTime;
 
     private Integer score;
+
+    // 临时字段用于前端打分输入，不存数据库
+    @Transient
+    private Integer tempScore;
 }

@@ -30,30 +30,53 @@ public class AssignmentController {
     @Autowired
     private SubmissionRepository submissionRepository;
 
+    @PostMapping("/add")
+    public String addAssignment(@RequestBody Assignment assignment) {
+        // 1. 简单校验
+        if (assignment.getCourseId() == null) {
+            throw new RuntimeException("必须指定所属课程");
+        }
+        if (assignment.getTitle() == null || assignment.getTitle().isEmpty()) {
+            throw new RuntimeException("作业标题不能为空");
+        }
+
+        // 2. 设定默认值 (数据库里的 status 字段如果是指作业状态，可以设为'进行中')
+        // 注意：如果是指学生的提交状态，这里不需要设，因为那是动态计算的
+        // 这里我们仅仅保存作业的基本信息
+        
+        assignmentRepository.save(assignment);
+        return "作业发布成功！学生现在可以看到并提交了。";
+    }
+
     // === 1. 查询我的作业列表 (升级版：包含状态和分数) ===
-    @GetMapping("/my-list")
+   @GetMapping("/my-list")
     public List<Assignment> getMyAssignments() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByUsername(username).orElseThrow();
 
-        // 1. 找课
-        Optional<StudentCourse> records = studentCourseRepository.findById(user.getUserId());
-        if (records.isEmpty()) return new ArrayList<>();
+        // 🔴 修复点：这里原来用的是 findById，必须改为 findByUserId
+        // 这样才能查出这个学生(user_id)选的所有课程
+        List<StudentCourse> records = studentCourseRepository.findByUserId(user.getUserId());
+        
+        if (records.isEmpty()) {
+            return new ArrayList<>(); // 如果没选课，直接返回空列表
+        }
 
-        // 2. 找作业
-        List<Integer> courseIds = records.stream().map(StudentCourse::getCourseId).toList();
+        // 2. 提取课程ID列表
+        List<Integer> courseIds = records.stream()
+                .map(StudentCourse::getCourseId)
+                .toList();
+
+        // 3. 根据课程ID找作业
         List<Assignment> assignments = assignmentRepository.findByCourseIdIn(courseIds);
 
-        // 3. 遍历作业，检查提交状态和分数
+        // 4. 遍历作业，检查提交状态和分数
         for (Assignment task : assignments) {
-            // 查提交记录
             Optional<HomeworkSubmission> submissionOpt = submissionRepository
                     .findByStudentIdAndAssignmentId(user.getUserId(), task.getId());
             
             if (submissionOpt.isPresent()) {
                 task.setStatus("已提交");
-                // 👇 关键修改：如果有提交记录，就把分数取出来给前端
-                // (前提是 Assignment 实体类里加了 score 字段)
                 task.setScore(submissionOpt.get().getScore());
             } else {
                 task.setStatus("待提交");
@@ -98,5 +121,9 @@ public class AssignmentController {
         submissionRepository.save(target);
         
         return "打分成功！";
+    }
+    @GetMapping("/all")
+    public List<Assignment> getAllAssignments() {
+        return assignmentRepository.findAll();
     }
 }
