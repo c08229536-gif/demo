@@ -1,36 +1,21 @@
 package com.education.backend.entity;
 
-
-
 import jakarta.persistence.*;
-
 import lombok.Data;
-
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
-
 import java.util.HashSet;
-
 import java.util.Set;
 
-
-
 @Data
-
 @Entity
-
 @Table(name = "sys_user")
-
 public class User {
-
-   
-
     @Id
 
     @GeneratedValue(strategy = GenerationType.IDENTITY)
 
     private Integer userId; // [cite: 73]
-
-
 
     @Column(unique = true, nullable = false)
 
@@ -55,9 +40,11 @@ public class User {
     @Column(name = "student_no")
     private String studentNo;
 
-    @Column(name = "create_time")
+    @Column(nullable = false)
+    private BigDecimal balance = new BigDecimal("1000.00"); // 初始赠送1000元用于测试
 
-    private LocalDateTime createTime; // [cite: 79]
+    @Column(name = "create_time")
+    private LocalDateTime createTime; 
 
 
 

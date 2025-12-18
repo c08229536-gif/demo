@@ -1,5 +1,7 @@
 package com.education.backend.entity;
 
+import java.math.BigDecimal;
+
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -34,5 +36,7 @@ public class Course {
     @Column(name = "teacher_id") 
     private Integer teacherId;
 
+    @Column(nullable = false)
+    private BigDecimal price = BigDecimal.ZERO;
     
 }

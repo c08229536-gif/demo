@@ -143,9 +143,14 @@
         </el-card>
 
         <el-card style="margin-top: 20px; text-align: center;">
-          <el-button v-if="userRole === 'student'" type="primary" size="large" style="width: 100%" @click="handleEnroll">
-            立即加入学习
-          </el-button>
+          <div v-if="userRole === 'student'">
+            <el-button v-if="!isEnrolled" type="primary" size="large" style="width: 100%" @click="paymentDialogVisible = true">
+              立即购买 (￥{{ course.price || '0.00' }})
+            </el-button>
+            <el-button v-else type="success" size="large" style="width: 100%" disabled>
+              <el-icon><Check /></el-icon> 已加入学习
+            </el-button>
+          </div>
           <div v-else style="display: flex; gap: 10px; flex-direction: column;">
             <el-button type="success" @click="assignmentDialogVisible = true">
               <el-icon style="margin-right: 5px"><Edit /></el-icon> 发布作业
@@ -165,14 +170,41 @@
                 <el-icon v-else><VideoPlay /></el-icon>
                 <span style="margin-left: 8px;">第{{ index + 1 }}章：{{ item.title }}</span>
               </div>
-              <el-button v-if="userRole === 'student' && !finishedChapterIds.includes(item.chapterId)" type="primary" link size="small" @click.stop="markAsFinished(item)">标记学完</el-button>
+              <el-button v-if="userRole === 'student' && isEnrolled && !finishedChapterIds.includes(item.chapterId)" type="primary" link size="small" @click.stop="markAsFinished(item)">标记学完</el-button>
               <span v-else-if="finishedChapterIds.includes(item.chapterId)" style="font-size: 12px; color: #67C23A;">已完成</span>
+              <el-icon v-if="userRole === 'student' && !isEnrolled" color="#909399"><Lock /></el-icon>
             </div>
           </div>
           <el-empty v-else description="暂无章节" image-size="60" />
         </el-card>
       </el-col>
     </el-row>
+
+    <el-dialog v-model="paymentDialogVisible" title="确认购买" width="400px" center>
+      <div style="text-align: center; padding: 10px 0;">
+        <p>您正在购买：<strong>{{ course.title }}</strong></p>
+        <h2 style="color: #f56c6c; margin: 20px 0;">￥{{ course.price }}</h2>
+        <el-divider />
+        <div style="display: flex; justify-content: space-between; font-size: 14px;">
+          <span>您的钱包余额：</span>
+          <span style="font-weight: bold;">￥{{ myBalance }}</span>
+        </div>
+        <p v-if="parseFloat(myBalance) < parseFloat(course.price)" style="color: #f56c6c; font-size: 12px; margin-top: 10px;">
+          温馨提示：余额不足，请联系管理员充值
+        </p>
+      </div>
+      <template #footer>
+        <el-button @click="paymentDialogVisible = false">取消</el-button>
+        <el-button 
+          type="primary" 
+          :disabled="parseFloat(myBalance) < parseFloat(course.price)" 
+          :loading="paying"
+          @click="handlePay"
+        >
+          确认支付
+        </el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog v-model="resourceDialogVisible" title="添加课件资料" width="500px">
       <el-form label-width="80px">
@@ -241,7 +273,7 @@
 <script setup>
 import { ref, onMounted, reactive } from 'vue'
 import { useRoute } from 'vue-router'
-import { VideoPlay, Edit, VideoCamera, Check, Upload, Document, UploadFilled, CircleCheckFilled } from '@element-plus/icons-vue'
+import { VideoPlay, Edit, VideoCamera, Check, Upload, Document, UploadFilled, CircleCheckFilled, Lock } from '@element-plus/icons-vue'
 import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
@@ -255,6 +287,13 @@ const userRole = ref('')
 const currentVideoUrl = ref('')
 const finishedChapterIds = ref([])
 const activeTab = ref('resources') // 默认看资料
+
+// 👇 新增：支付相关变量
+const isEnrolled = ref(false)
+const paymentDialogVisible = ref(false)
+const paying = ref(false)
+const myBalance = ref('0.00')
+const myUserId = ref(null)
 
 // 👇 新增：评价相关变量
 const reviewList = ref([])
@@ -292,6 +331,8 @@ const init = async () => {
   
   if (userRole.value === 'student') {
     fetchProgress(courseId)
+    checkEnrollStatus(courseId) // 👈 新增：检查是否已购买
+    fetchMyBalance()            // 👈 新增：获取最新余额
   } else {
     activeTab.value = 'students' // 老师默认看学员
     fetchCourseStudents(courseId)
@@ -300,13 +341,53 @@ const init = async () => {
 
 // 核心数据获取
 const fetchUserInfo = async () => {
-  try { const res = await axios.get('/api/auth/me'); userRole.value = res.data.role } catch(e){}
+  try { 
+    const res = await axios.get('/api/auth/me')
+    userRole.value = res.data.role 
+    myUserId.value = res.data.userId || res.data.id
+  } catch(e){}
 }
 const fetchCourseDetail = async (cid) => {
   const res = await axios.get(`/api/course/${cid}`); course.value = res.data
 }
 const fetchChapters = async (cid) => {
   const res = await axios.get(`/api/course/${cid}/chapters`); chapters.value = res.data
+}
+
+// 👇 新增：检查购买状态
+const checkEnrollStatus = async (cid) => {
+  try {
+    const res = await axios.get(`/api/course/${cid}/is-enrolled`)
+    isEnrolled.value = res.data
+  } catch(e) { isEnrolled.value = false }
+}
+
+// 👇 新增：获取我的余额
+const fetchMyBalance = async () => {
+  try {
+    const res = await axios.get('/api/auth/me')
+    myBalance.value = res.data.balance || '0.00'
+  } catch(e) {}
+}
+
+// 👇 新增：处理支付逻辑
+const handlePay = async () => {
+  paying.value = true
+  try {
+    await axios.post('/api/payment/buy', {
+      userId: myUserId.value,
+      courseId: course.value.courseId
+    })
+    ElMessage.success('支付成功，已为您开通课程！')
+    paymentDialogVisible.value = false
+    isEnrolled.value = true
+    fetchMyBalance()
+    init() // 重新刷新数据
+  } catch (error) {
+    ElMessage.error(error.response?.data?.message || '支付失败')
+  } finally {
+    paying.value = false
+  }
 }
 
 // 资源管理相关函数
@@ -405,7 +486,10 @@ const markAsFinished = async (chapter) => {
     finishedChapterIds.value.push(chapter.chapterId)
   } catch (e) {}
 }
-const playVideo = (url) => { if(url) currentVideoUrl.value = url }
+const playVideo = (url) => { 
+  if(!isEnrolled.value && userRole.value === 'student') return ElMessage.warning('请先购买课程再观看视频')
+  if(url) currentVideoUrl.value = url 
+}
 const handleVideoEnded = () => {
   if (userRole.value === 'teacher') return
   const currentChapter = chapters.value.find(c => c.videoUrl === currentVideoUrl.value)
@@ -415,8 +499,8 @@ const handleVideoEnded = () => {
   }
 }
 const handleEnroll = async () => {
-  try { await axios.post(`/api/course/enroll/${course.value.courseId}`); ElMessage.success('加入成功') } 
-  catch(e) { ElMessage.error('加入失败 (可能已加入)') }
+  // 此方法已弃用，改为使用 handlePay 进行购买
+  paymentDialogVisible.value = true
 }
 const handlePublishAssignment = async () => {
   if (!newAssignment.value.title) return ElMessage.warning('标题不能为空')
