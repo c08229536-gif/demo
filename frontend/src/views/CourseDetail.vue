@@ -150,6 +150,14 @@
             <el-button v-else type="success" size="large" style="width: 100%" disabled>
               <el-icon><Check /></el-icon> 已加入学习
             </el-button>
+            <div style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+               <span style="font-size: 14px; color: #666;">
+                 当前余额: <strong style="color: #E6A23C;">￥{{ myBalance }}</strong>
+               </span>
+               <el-button type="primary" link size="small" @click="handleQuickRecharge">
+                 充值
+               </el-button>
+            </div>
           </div>
           <div v-else style="display: flex; gap: 10px; flex-direction: column;">
             <el-button type="success" @click="assignmentDialogVisible = true">
@@ -189,10 +197,17 @@
           <span>您的钱包余额：</span>
           <span style="font-weight: bold;">￥{{ myBalance }}</span>
         </div>
-        <p v-if="parseFloat(myBalance) < parseFloat(course.price)" style="color: #f56c6c; font-size: 12px; margin-top: 10px;">
-          温馨提示：余额不足，请联系管理员充值
-        </p>
-      </div>
+        
+        <div v-if="parseFloat(myBalance) < parseFloat(course.price)" style="margin-top: 15px; padding: 10px; background-color: #fef0f0; border-radius: 4px;">
+           <p style="color: #f56c6c; font-size: 12px; margin-bottom: 8px;">
+             <el-icon style="vertical-align: middle; margin-right: 3px;"><Warning /></el-icon>
+             <span>余额不足 (还差 ￥{{ (parseFloat(course.price) - parseFloat(myBalance)).toFixed(2) }})</span>
+           </p>
+           <el-button type="warning" size="small" @click="handleQuickRecharge">
+             🚀 立即充值
+           </el-button>
+        </div>
+        </div>
       <template #footer>
         <el-button @click="paymentDialogVisible = false">取消</el-button>
         <el-button 
@@ -273,7 +288,8 @@
 <script setup>
 import { ref, onMounted, reactive } from 'vue'
 import { useRoute } from 'vue-router'
-import { VideoPlay, Edit, VideoCamera, Check, Upload, Document, UploadFilled, CircleCheckFilled, Lock } from '@element-plus/icons-vue'
+// 👇 修改点2：添加了 Warning 图标的引入
+import { VideoPlay, Edit, VideoCamera, Check, Upload, Document, UploadFilled, CircleCheckFilled, Lock, Warning } from '@element-plus/icons-vue'
 import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
@@ -368,6 +384,32 @@ const fetchMyBalance = async () => {
     const res = await axios.get('/api/auth/me')
     myBalance.value = res.data.balance || '0.00'
   } catch(e) {}
+}
+
+// 👇 修改点3：新增充值功能函数
+const handleQuickRecharge = () => {
+  ElMessageBox.prompt('请输入充值金额', '钱包充值', {
+    confirmButtonText: '充值',
+    cancelButtonText: '取消',
+    inputType: 'number',
+    inputPattern: /^[0-9]+(\.[0-9]{1,2})?$/,
+    inputErrorMessage: '金额格式不正确'
+  }).then(async ({ value }) => {
+    try {
+      // 假设充值接口为 /api/payment/recharge
+      await axios.post('/api/payment/recharge', {
+        userId: myUserId.value,
+        amount: parseFloat(value)
+      })
+      ElMessage.success(`成功充值 ${value} 元！`)
+      fetchMyBalance() // 充值成功后立即刷新余额
+    } catch (error) {
+      console.error(error)
+      ElMessage.error(error.response?.data?.message || '充值失败，请检查接口')
+    }
+  }).catch(() => {
+    // 取消充值不做处理
+  })
 }
 
 // 👇 新增：处理支付逻辑
