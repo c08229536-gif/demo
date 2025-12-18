@@ -11,7 +11,7 @@
  Target Server Version : 80044 (8.0.44)
  File Encoding         : 65001
 
- Date: 17/12/2025 21:05:34
+ Date: 18/12/2025 21:06:12
 */
 
 SET NAMES utf8mb4;
@@ -73,18 +73,19 @@ CREATE TABLE `course`  (
   `description` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
   `status` int NULL DEFAULT 0 COMMENT '状态：0-待审核，1-已发布，2-已驳回',
   `category` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `teacher_id` int NULL DEFAULT NULL,
   PRIMARY KEY (`course_id`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 7 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of course
 -- ----------------------------
-INSERT INTO `course` VALUES (1, 'Java 高级编程', '张教授', 'https://placeholder.co/300x200/409EFF/ffffff?text=Java+Plus', '深入理解 JVM 原理', 1, '后端');
-INSERT INTO `course` VALUES (2, 'Python 数据分析', '李博士', 'https://placeholder.co/300x200/67C23A/ffffff?text=Python', 'Pandas 与 NumPy 实战', 1, 'AI');
-INSERT INTO `course` VALUES (3, 'Vue3 全栈开发', '王大神', 'https://placeholder.co/300x200/E6A23C/ffffff?text=Vue3', '从入门到精通', 1, '前端');
-INSERT INTO `course` VALUES (4, '测试课程', '我', 'https://placeholder.co/300x200/808080/ffffff?text=No+Cover', '你好你好', 1, '其他');
-INSERT INTO `course` VALUES (5, 'Python进阶', '陈健宇', 'https://placeholder.co/300x200/808080/ffffff?text=No+Cover', 'glagame男主', 1, 'AI');
-INSERT INTO `course` VALUES (6, '软件设计', '陈坤', 'https://placeholder.co/300x200/808080/ffffff?text=No+Cover', '', 1, '移动端');
+INSERT INTO `course` VALUES (1, 'Java 高级编程', '张教授', 'https://placeholder.co/300x200/409EFF/ffffff?text=Java+Plus', '深入理解 JVM 原理', 1, '后端', NULL);
+INSERT INTO `course` VALUES (2, 'Python 数据分析', '李博士', 'https://placeholder.co/300x200/67C23A/ffffff?text=Python', 'Pandas 与 NumPy 实战', 1, 'AI', NULL);
+INSERT INTO `course` VALUES (3, 'Vue3 全栈开发', '王大神', 'https://placeholder.co/300x200/E6A23C/ffffff?text=Vue3', '从入门到精通', 1, '前端', NULL);
+INSERT INTO `course` VALUES (4, '测试课程', '我', 'https://placeholder.co/300x200/808080/ffffff?text=No+Cover', '你好你好', 1, '其他', NULL);
+INSERT INTO `course` VALUES (5, 'Python进阶', '陈健宇', 'https://placeholder.co/300x200/808080/ffffff?text=No+Cover', 'glagame男主', 1, 'AI', NULL);
+INSERT INTO `course` VALUES (6, '软件设计', '陈坤', 'https://placeholder.co/300x200/808080/ffffff?text=No+Cover', '', 1, '移动端', NULL);
 
 -- ----------------------------
 -- Table structure for course_resource
@@ -137,13 +138,14 @@ CREATE TABLE `feedback`  (
   `reply` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '提问时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of feedback
 -- ----------------------------
 INSERT INTO `feedback` VALUES (1, 1, 5, '救救我', NULL, '2025-12-15 19:51:52');
 INSERT INTO `feedback` VALUES (2, 1, 5, '怎么搞啊', '问题发我', '2025-12-15 19:52:00');
+INSERT INTO `feedback` VALUES (3, 1, 5, '你好', NULL, '2025-12-18 20:51:32');
 
 -- ----------------------------
 -- Table structure for homework_submission
@@ -157,15 +159,18 @@ CREATE TABLE `homework_submission`  (
   `submit_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '提交时间',
   `score` int NULL DEFAULT NULL COMMENT '分数',
   `image_url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `feedback` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `status` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of homework_submission
 -- ----------------------------
-INSERT INTO `homework_submission` VALUES (1, 1, 5, '你好你好你好', '2025-12-14 12:49:04', 99, NULL);
-INSERT INTO `homework_submission` VALUES (2, 5, 5, '我来了', '2025-12-14 21:12:16', 80, NULL);
-INSERT INTO `homework_submission` VALUES (3, 2, 5, '奶粉里都不能发公屏胡闹日读过后偶然很骚返回弄还oihnseroghgohaw】awgh\'rsjg哇好几个、\n啊、\ngrphjgvbapragwrhgparwgawhegjrpaogjaw郭文贵\n见公婆数据、\n、j【sejgvpsrizhgvw、\nwergjaperwghjwjgrpjeawr根据23【竟然3-九1迫击炮i哦好精辟后i好呢日哦和皮偶hi哦和噢ihou、', '2025-12-15 19:25:43', 85, NULL);
+INSERT INTO `homework_submission` VALUES (1, 1, 5, '你好你好你好', '2025-12-14 12:49:04', 99, NULL, NULL, NULL);
+INSERT INTO `homework_submission` VALUES (2, 5, 5, '我来了', '2025-12-14 21:12:16', 80, NULL, NULL, NULL);
+INSERT INTO `homework_submission` VALUES (3, 2, 5, '奶粉里都不能发公屏胡闹日读过后偶然很骚返回弄还oihnseroghgohaw】awgh\'rsjg哇好几个、\n啊、\ngrphjgvbapragwrhgparwgawhegjrpaogjaw郭文贵\n见公婆数据、\n、j【sejgvpsrizhgvw、\nwergjaperwghjwjgrpjeawr根据23【竟然3-九1迫击炮i哦好精辟后i好呢日哦和皮偶hi哦和噢ihou、', '2025-12-15 19:25:43', 85, NULL, NULL, NULL);
+INSERT INTO `homework_submission` VALUES (4, 3, 5, '啊啊老妇女了你覅偶尔瓦活佛i怀柔i凤凰男破i害怕2312人佛坪1；欧派让他', '2025-12-18 21:00:02', 86, NULL, '继续加油', '已批改');
 
 -- ----------------------------
 -- Table structure for learning_record
@@ -208,6 +213,46 @@ INSERT INTO `student_course` VALUES (2, 5, 2, '2025-12-14 00:03:50');
 INSERT INTO `student_course` VALUES (3, 5, 3, '2025-12-14 00:03:53');
 INSERT INTO `student_course` VALUES (4, 5, 4, '2025-12-14 18:37:34');
 INSERT INTO `student_course` VALUES (5, 7, 4, '2025-12-14 18:38:04');
+
+-- ----------------------------
+-- Table structure for sys_feedback
+-- ----------------------------
+DROP TABLE IF EXISTS `sys_feedback`;
+CREATE TABLE `sys_feedback`  (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL COMMENT '提交人ID',
+  `type` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `content` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `contact` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `status` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `reply` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of sys_feedback
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for sys_message
+-- ----------------------------
+DROP TABLE IF EXISTS `sys_message`;
+CREATE TABLE `sys_message`  (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL COMMENT '接收人ID',
+  `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `content` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `is_read` int NULL DEFAULT NULL,
+  `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of sys_message
+-- ----------------------------
+INSERT INTO `sys_message` VALUES (1, 5, '作业已批改', '您的作业《Python 数据清洗实战》已被老师批改，得分：86', 0, '2025-12-18 21:00:22');
+INSERT INTO `sys_message` VALUES (2, 5, '作业已批改', '您的作业《Python 数据清洗实战》已被老师批改，得分：86', 0, '2025-12-18 21:00:28');
 
 -- ----------------------------
 -- Table structure for sys_role

@@ -15,6 +15,10 @@ public class HomeworkSubmission {
     @Column(name = "assignment_id")
     private Integer assignmentId;
 
+    private String status;
+
+    private String feedback;
+
     @Column(name = "student_id")
     private Integer studentId;
 
@@ -31,4 +35,12 @@ public class HomeworkSubmission {
     // 临时字段用于前端打分输入，不存数据库
     @Transient
     private Integer tempScore;
+
+    @Transient 
+    private String studentName;
+
+    @Transient 
+    private String assignmentTitle;
+
+    
 }

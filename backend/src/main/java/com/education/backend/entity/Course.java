@@ -29,7 +29,10 @@ public class Course {
     @Transient
     private Double rating; // 平均评分
 
-    private String category; 
+    private String category;
+    
+    @Column(name = "teacher_id") 
+    private Integer teacherId;
 
     
 }

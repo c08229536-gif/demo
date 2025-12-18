@@ -29,4 +29,7 @@ public class Assignment {
     private Integer courseId;
 
     private LocalDateTime deadline;
+
+    @Transient
+    private String feedback;
 }
