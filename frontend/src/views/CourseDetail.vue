@@ -183,7 +183,7 @@
               <el-icon v-if="userRole === 'student' && !isEnrolled" color="#909399"><Lock /></el-icon>
             </div>
           </div>
-          <el-empty v-else description="暂无章节" image-size="60" />
+          <el-empty v-else description="暂无章节" :image-size="60" />
         </el-card>
       </el-col>
     </el-row>

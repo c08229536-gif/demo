@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/payment")
+@RequestMapping("/payment")
 public class MockPaymentController {
 
     @Autowired private UserRepository userRepository;
