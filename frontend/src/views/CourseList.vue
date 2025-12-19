@@ -1,10 +1,28 @@
 <template>
-  <div>
+  <div class="course-list-page" style="padding: 20px;">
+    
+    <div v-if="bannerList.length > 0" class="carousel-container">
+      <el-carousel :interval="5000" type="card" height="300px">
+        <el-carousel-item v-for="item in bannerList" :key="item.id">
+          <div class="banner-item" @click="handleBannerClick(item.linkUrl)">
+            <el-image :src="item.imageUrl" fit="cover" class="banner-image">
+              <template #placeholder>
+                <div class="image-slot">加载中<span class="dot">...</span></div>
+              </template>
+            </el-image>
+            <div class="banner-info">
+              <h3>{{ item.title }}</h3>
+            </div>
+          </div>
+        </el-carousel-item>
+      </el-carousel>
+    </div>
+
     <div class="header-actions">
       <el-input
         v-model="searchText"
         placeholder="搜索课程名称..."
-        prefix-icon="Search"
+        :prefix-icon="Search"
         class="search-input"
         clearable
         @clear="filterCourses"
@@ -16,7 +34,7 @@
         @click="dialogVisible = true"
         v-if="userRole === 'teacher' || userRole === 'admin'"
       >
-         <el-icon style="margin-right: 5px"><Plus /></el-icon> 发布新课程
+        <el-icon style="margin-right: 5px"><Plus /></el-icon> 发布新课程
       </el-button>
     </div>
 
@@ -37,7 +55,7 @@
       <el-col :span="6" v-for="course in filteredList" :key="course.courseId" style="margin-bottom: 20px;">
         <el-card :body-style="{ padding: '0px' }" shadow="hover" class="course-card">
           <div class="img-wrapper">
-             <img :src="course.cover" class="image" />
+             <img :src="course.cover || 'https://via.placeholder.com/300x160?text=No+Cover'" class="image" />
              <span class="category-tag">{{ course.category || '其他' }}</span>
           </div>
           
@@ -58,7 +76,7 @@
 
             <div class="bottom">
               <span class="teacher">
-                <el-icon><User /></el-icon> {{ course.teacher }}
+                <el-icon><UserIcon /></el-icon> {{ course.teacher }}
               </span>
               <el-button type="primary" plain size="small" @click="$router.push(`/home/course/${course.courseId}`)">
                 进入学习
@@ -110,17 +128,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import { Search, Plus, User } from '@element-plus/icons-vue'
+import { ref, onMounted } from 'vue'
+import { Search, Plus, User as UserIcon } from '@element-plus/icons-vue' // 👈 注意：这里重命名 User 图标防止冲突
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
+// --- 数据响应式变量 ---
 const searchText = ref('')
-const currentCategory = ref('全部') // 当前选中的分类
-const allCourses = ref([]) // 存所有课程
-const filteredList = ref([]) // 存筛选后的课程
+const currentCategory = ref('全部')
+const allCourses = ref([])
+const filteredList = ref([])
+const bannerList = ref([]) // 存储轮播图数据
 const loading = ref(false)
-
 const dialogVisible = ref(false)
 const userRole = ref('') 
 
@@ -129,50 +148,64 @@ const newCourse = ref({
   teacher: '',
   description: '',
   cover: '',
-  category: '后端' // 默认值
+  category: '后端'
 })
 
-// 获取用户信息
+// --- 逻辑函数 ---
+
+// 1. 获取轮播图列表
+const fetchBanners = async () => {
+  try {
+    const res = await axios.get('/api/banners') // 对应后端的公共查询接口
+    bannerList.value = res.data.filter(b => b.isActive === 1)
+  } catch (error) {
+    console.error('获取轮播图失败:', error)
+  }
+}
+
+// 2. 获取当前登录用户信息 (用于角色权限控制)
 const fetchUserInfo = async () => {
   try {
     const res = await axios.get('/api/auth/me')
     userRole.value = res.data.role
-  } catch (error) {}
+  } catch (error) {
+    console.error('获取用户信息失败')
+  }
 }
 
-// 获取课程列表
+// 3. 获取所有课程列表
 const fetchCourses = async () => {
   loading.value = true
   try {
-    const res = await axios.get('/api/course/list')
+    const res = await axios.get('/api/course/list') // 请确保后端该接口路径正确
     allCourses.value = res.data
-    // 初始执行一次筛选
-    filterCourses()
+    filterCourses() // 获取后立即执行一次筛选逻辑
   } catch (error) {
-    console.error('获取课程失败:', error)
+    ElMessage.error('获取课程列表失败')
   } finally {
     loading.value = false
   }
 }
 
-// 👇 核心筛选逻辑：同时根据【搜索词】和【分类】过滤
+// 4. 核心筛选逻辑：根据分类按钮和搜索关键词同时过滤
 const filterCourses = () => {
   let result = allCourses.value
 
-  // 1. 先按分类筛
+  // 分类过滤
   if (currentCategory.value !== '全部') {
     result = result.filter(c => c.category === currentCategory.value)
   }
 
-  // 2. 再按关键词筛
+  // 关键词过滤
   if (searchText.value) {
-    result = result.filter(c => c.title.toLowerCase().includes(searchText.value.toLowerCase()))
+    const key = searchText.value.toLowerCase()
+    result = result.filter(c => c.title.toLowerCase().includes(key))
   }
 
   filteredList.value = result
 }
 
-// 发布课程
+// 5. 教师发布课程
 const handlePublish = async () => {
   if (!newCourse.value.title) return ElMessage.warning('请填写课程标题')
   
@@ -182,86 +215,117 @@ const handlePublish = async () => {
     dialogVisible.value = false 
     // 重置表单
     newCourse.value = { title: '', teacher: '', description: '', cover: '', category: '后端' }
-    fetchCourses()
+    fetchCourses() // 重新加载数据
   } catch (error) {
-    ElMessage.error('发布失败')
+    ElMessage.error('发布失败，请检查网络')
   }
 }
 
+// 6. 轮播图跳转
+const handleBannerClick = (url) => {
+  if (url) window.open(url, '_blank')
+}
+
+// --- 生命周期挂载 ---
 onMounted(() => {
   fetchUserInfo()
   fetchCourses()
+  fetchBanners()
 })
 </script>
 
 <style scoped>
-/* 顶部样式优化 */
+/* 轮播图区域 */
+.carousel-container {
+  margin-bottom: 30px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.banner-item {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  cursor: pointer;
+}
+.banner-image {
+  width: 100%;
+  height: 100%;
+}
+.banner-info {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  padding: 10px 20px;
+}
+.banner-info h3 { margin: 0; font-size: 18px; }
+
+/* 顶部操作区 */
 .header-actions {
   display: flex;
   justify-content: space-between;
   margin-bottom: 20px;
 }
-.search-input { width: 300px; }
+.search-input { width: 320px; }
 
-/* 分类标签栏 */
+/* 课程分类标签 */
 .category-tabs {
   margin-bottom: 25px;
   background: #fff;
   padding: 15px;
   border-radius: 8px;
-  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
   display: flex;
   align-items: center;
 }
 .label { font-weight: bold; color: #333; margin-right: 15px; }
 
-/* 课程卡片优化 */
+/* 课程卡片 */
 .course-card {
-  transition: all 0.3s;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
 }
 .course-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  transform: translateY(-8px);
+  box-shadow: 0 12px 24px rgba(0,0,0,0.12);
 }
 
 .img-wrapper {
   position: relative;
   height: 160px;
-  overflow: hidden;
+  background: #f0f2f5;
 }
 .image {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.5s;
-}
-.course-card:hover .image {
-  transform: scale(1.05); /* 图片微放大效果 */
 }
 
-/* 分类标签悬浮 */
 .category-tag {
   position: absolute;
   top: 10px;
   right: 10px;
-  background: rgba(0,0,0,0.6);
+  background: rgba(64, 158, 255, 0.9);
   color: #fff;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 11px;
 }
 
 .course-title {
   margin: 0;
   font-size: 16px;
-  font-weight: bold;
+  font-weight: 600;
+  height: 22px;
+  line-height: 22px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: #333;
+  color: #2c3e50;
 }
 
 .bottom {
@@ -272,9 +336,19 @@ onMounted(() => {
 }
 .teacher {
   font-size: 13px;
-  color: #666;
+  color: #7f8c8d;
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.image-slot {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  background: #f5f7fa;
+  color: #909399;
 }
 </style>

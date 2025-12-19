@@ -7,22 +7,29 @@
           <el-menu-item index="/home/profile"><el-icon><User /></el-icon><span>个人中心</span></el-menu-item>
           <el-menu-item index="/home/courses"><el-icon><Reading /></el-icon><span>课程中心</span></el-menu-item>
           
-          <el-menu-item index="/home/my-courses" v-if="userRole === 'student'"><el-icon><Collection /></el-icon><span>我的课程</span></el-menu-item>
-          <el-menu-item index="/home/my-assignment" v-if="userRole === 'student'"><el-icon><EditPen /></el-icon><span>我的作业</span></el-menu-item>
+          <template v-if="userRole === 'student'">
+            <el-menu-item index="/home/my-courses"><el-icon><Collection /></el-icon><span>我的课程</span></el-menu-item>
+            <el-menu-item index="/home/exam/1"><el-icon><Postcard /></el-icon><span>在线考试</span></el-menu-item>
+            <el-menu-item index="/home/my-assignment"><el-icon><EditPen /></el-icon><span>我的作业</span></el-menu-item>
+          </template>
+
           <el-menu-item index="/home/feedback" v-if="userRole === 'student' || userRole === 'teacher'"><el-icon><ChatLineSquare /></el-icon><span>意见反馈</span></el-menu-item>
           
           <el-menu-item index="/home/grade-assignment" v-if="userRole === 'teacher'"><el-icon><Edit /></el-icon><span>作业批改</span></el-menu-item>
           
-          <el-menu-item index="/home/user-manage" v-if="userRole === 'admin'"><el-icon><UserFilled /></el-icon><span>用户管理</span></el-menu-item>
-          <el-menu-item index="/home/admin-audit" v-if="userRole === 'admin'"><el-icon><List /></el-icon><span>课程审核</span></el-menu-item>
-          <el-menu-item index="/home/admin-feedback" v-if="userRole === 'admin'"><el-icon><Service /></el-icon><span>反馈处理</span></el-menu-item>
+          <template v-if="userRole === 'admin'">
+            <el-menu-item index="/home/user-manage"><el-icon><UserFilled /></el-icon><span>用户管理</span></el-menu-item>
+            <el-menu-item index="/home/admin-audit"><el-icon><List /></el-icon><span>课程审核</span></el-menu-item>
+            <el-menu-item index="/home/admin-feedback"><el-icon><Service /></el-icon><span>反馈处理</span></el-menu-item>
+            <el-menu-item index="/home/banner-manage"><el-icon><Picture /></el-icon><span>首页运营</span></el-menu-item>
+            <el-menu-item index="/home/log-manage"><el-icon><Monitor /></el-icon><span>系统日志</span></el-menu-item>
+          </template>
         </el-menu>
       </el-aside>
 
       <el-container>
         <el-header class="header">
-          <div class="breadcrumb">
-            </div>
+          <div class="breadcrumb"></div>
           
           <div class="header-right">
             <el-popover placement="bottom" :width="300" trigger="click">
@@ -66,8 +73,12 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
-// 👇 引入需要的图标
-import { User, Reading, Collection, EditPen, Edit, UserFilled, List, ChatLineSquare, Service, Bell } from '@element-plus/icons-vue'
+// 导入所有需要的图标
+import { 
+  User, Reading, Collection, EditPen, Edit, 
+  UserFilled, List, ChatLineSquare, Service, 
+  Bell, Picture, Monitor, Postcard 
+} from '@element-plus/icons-vue'
 
 const router = useRouter()
 const userRole = ref('')
@@ -80,12 +91,13 @@ const fetchUserInfo = async () => {
     const res = await axios.get('/api/auth/me')
     userRole.value = res.data.role
     realName.value = res.data.realName
+    // 同步到本地供路由守卫使用
+    localStorage.setItem('userRole', res.data.role)
   } catch (error) {
     router.push('/')
   }
 }
 
-// 👇 新增：获取消息
 const fetchMessages = async () => {
   try {
     const res = await axios.get('/api/message/my')
@@ -94,7 +106,6 @@ const fetchMessages = async () => {
   } catch(e) {}
 }
 
-// 👇 新增：点击已读
 const readMessage = async (msg) => {
   if (msg.isRead === 0) {
     await axios.post(`/api/message/read/${msg.id}`)
@@ -105,12 +116,13 @@ const readMessage = async (msg) => {
 
 const logout = () => {
   localStorage.removeItem('token')
+  localStorage.removeItem('userRole')
   router.push('/')
 }
 
 onMounted(() => {
   fetchUserInfo()
-  fetchMessages() // 加载消息
+  fetchMessages()
 })
 </script>
 
@@ -118,7 +130,7 @@ onMounted(() => {
 .common-layout { height: 100vh; }
 .aside { background-color: #304156; color: white; }
 .logo { height: 60px; line-height: 60px; text-align: center; font-size: 20px; font-weight: bold; background: #2b3649; }
-.header { background: #fff; border-bottom: 1px solid #ddd; display: flex; align-items: center; justify-content: space-between; }
+.header { background: #fff; border-bottom: 1px solid #ddd; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
 .header-right { display: flex; align-items: center; }
 
 /* 消息样式 */
