@@ -28,3 +28,7 @@ spring:
 security:
   basic:
     enabled: false
+
+# 文件上传相关配置
+file:
+  upload-dir: 'd:/student system/uploads'

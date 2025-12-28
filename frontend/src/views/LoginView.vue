@@ -75,10 +75,17 @@ const handleLogin = async () => {
     params.append('username', form.username)
     params.append('password', form.password)
     
-    await axios.post('/api/login', params)
-    
-    const meRes = await axios.get('/api/auth/me')
-    const realRole = meRes.data.role
+    const loginRes = await axios.post('/api/login', params)
+    const userInfo = loginRes.data
+    const realRole = userInfo.role
+
+    // 检查是否首次登录
+    if (userInfo.firstLogin) {
+        ElMessage.info('首次登录，请修改您的密码。')
+        localStorage.setItem('userRole', realRole) // 即使是首次登录，也要先存好角色信息
+        router.push('/change-password')
+        return; // 中断后续代码执行
+    }
 
     // 校验角色匹配
     if (realRole !== activeRole.value) {

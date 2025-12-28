@@ -11,7 +11,7 @@
  Target Server Version : 80044 (8.0.44)
  File Encoding         : 65001
 
- Date: 19/12/2025 19:20:07
+ Date: 28/12/2025 17:29:33
 */
 
 SET NAMES utf8mb4;
@@ -81,12 +81,12 @@ CREATE TABLE `course`  (
 -- ----------------------------
 -- Records of course
 -- ----------------------------
-INSERT INTO `course` VALUES (1, 'Java 高级编程', '张教授', 'https://placeholder.co/300x200/409EFF/ffffff?text=Java+Plus', '深入理解 JVM 原理', 1, '后端', NULL, 0.00);
-INSERT INTO `course` VALUES (2, 'Python 数据分析', '李博士', 'https://placeholder.co/300x200/67C23A/ffffff?text=Python', 'Pandas 与 NumPy 实战', 1, 'AI', NULL, 0.00);
-INSERT INTO `course` VALUES (3, 'Vue3 全栈开发', '王大神', 'https://placeholder.co/300x200/E6A23C/ffffff?text=Vue3', '从入门到精通', 1, '前端', NULL, 0.00);
-INSERT INTO `course` VALUES (4, '测试课程', '我', 'https://placeholder.co/300x200/808080/ffffff?text=No+Cover', '你好你好', 1, '其他', NULL, 0.00);
-INSERT INTO `course` VALUES (5, 'Python进阶', '陈健宇', 'https://placeholder.co/300x200/808080/ffffff?text=No+Cover', 'glagame男主', 1, 'AI', NULL, 0.00);
-INSERT INTO `course` VALUES (6, '软件设计', '陈坤', 'https://placeholder.co/300x200/808080/ffffff?text=No+Cover', '', 1, '移动端', NULL, 0.00);
+INSERT INTO `course` VALUES (1, 'Java 高级编程', '张教授', '/uploads/96b105f2-dad6-4bd3-85fe-04e27f4c7364.jpeg', '深入理解 JVM 原理', 1, '后端', NULL, 0.00);
+INSERT INTO `course` VALUES (2, 'Python 数据分析', '李博士', '/uploads/0563b2db-8522-454a-97b3-ac3013e16734.png', 'Pandas 与 NumPy 实战', 1, 'AI', NULL, 0.00);
+INSERT INTO `course` VALUES (3, 'Vue3 全栈开发', '王大神', '/uploads/508adb34-27bd-4958-9538-48b27b8806a2.jpg', '从入门到精通', 1, '前端', NULL, 0.00);
+INSERT INTO `course` VALUES (4, '测试课程', '我', '/uploads/46eb1054-f7c5-4225-9fa4-806746cce410.jpeg', '你好你好', 1, '其他', NULL, 0.00);
+INSERT INTO `course` VALUES (5, 'Python进阶', '陈健宇', '/uploads/f4155775-8b6b-4e95-8723-a73e77a9e956.jpg', 'glagame男主', 1, 'AI', NULL, 0.00);
+INSERT INTO `course` VALUES (6, '软件设计', '陈坤', '/uploads/9eef4f13-656a-45ea-951c-3c09d1380d47.jpg', '', 1, '移动端', NULL, 0.00);
 INSERT INTO `course` VALUES (7, '测试', '111', '', '', 1, '后端', NULL, 0.00);
 INSERT INTO `course` VALUES (8, '22', '111111', '', '', 2, '后端', NULL, 0.00);
 
@@ -103,7 +103,7 @@ CREATE TABLE `course_progress`  (
   `is_finished` int NULL DEFAULT NULL,
   `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of course_progress
@@ -158,6 +158,12 @@ CREATE TABLE `exam`  (
   `course_id` bigint NULL DEFAULT NULL COMMENT '关联课程ID',
   `total_score` int NULL DEFAULT 100 COMMENT '总分',
   `duration` int NULL DEFAULT NULL COMMENT '考试时长(分钟)',
+  `create_time` datetime(6) NULL DEFAULT NULL,
+  `description` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+  `end_time` datetime(6) NULL DEFAULT NULL,
+  `start_time` datetime(6) NULL DEFAULT NULL,
+  `state` int NULL DEFAULT NULL,
+  `teacher_id` int NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
 
@@ -178,7 +184,7 @@ CREATE TABLE `exam_question`  (
   `answer` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   `score` int NULL DEFAULT NULL COMMENT '分值',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of exam_question
@@ -217,12 +223,14 @@ CREATE TABLE `home_banner`  (
   `sort_order` int NULL DEFAULT 0,
   `is_active` int NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of home_banner
 -- ----------------------------
 INSERT INTO `home_banner` VALUES (1, '11', 'https://files.imagetourl.net/uploads/1766133048499-4324f65e-79a2-4eb4-a37d-8ff7ac82db3e.jpeg', '', 0, 1);
+INSERT INTO `home_banner` VALUES (2, '22', '/uploads/6947b70f-637f-440c-a338-257a527998aa.jpeg', '', 0, 1);
+INSERT INTO `home_banner` VALUES (3, '33', '/uploads/03b1be38-7810-4ac7-8e8c-9359bc433743.jpeg', '', 0, 1);
 
 -- ----------------------------
 -- Table structure for homework_submission
@@ -345,7 +353,7 @@ CREATE TABLE `sys_log`  (
   `ip` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 258 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 292 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of sys_log
@@ -600,6 +608,40 @@ INSERT INTO `sys_log` VALUES (254, 'AdminSystem', 'getPendingCourses', 'AdminCon
 INSERT INTO `sys_log` VALUES (255, 'AdminSystem', 'auditCourse', 'AdminController', '[{courseId=8, pass=false}]', '0:0:0:0:0:0:0:1', '2025-12-19 19:04:09');
 INSERT INTO `sys_log` VALUES (256, 'AdminSystem', 'getPendingCourses', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-19 19:04:09');
 INSERT INTO `sys_log` VALUES (257, 'AdminSystem', 'saveBanner', 'AdminController', '[HomeBanner(id=1, title=11, imageUrl=https://files.imagetourl.net/uploads/1766133048499-4324f65e-79a2-4eb4-a37d-8ff7ac82db3e.jpeg, linkUrl=, sortOrder=0, isActive=1)]', '0:0:0:0:0:0:0:1', '2025-12-19 19:05:55');
+INSERT INTO `sys_log` VALUES (258, 'AdminSystem', 'saveBanner', 'AdminController', '[HomeBanner(id=2, title=22, imageUrl=b1555716d8e3297ed177d682b872b599.jpeg, linkUrl=, sortOrder=0, isActive=1)]', '0:0:0:0:0:0:0:1', '2025-12-28 16:31:12');
+INSERT INTO `sys_log` VALUES (259, 'AdminSystem', 'getLogs', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 16:31:28');
+INSERT INTO `sys_log` VALUES (260, 'AdminSystem', 'getLogs', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 16:40:33');
+INSERT INTO `sys_log` VALUES (261, 'AdminSystem', 'getBanners', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 16:40:34');
+INSERT INTO `sys_log` VALUES (262, 'AdminSystem', 'saveBanner', 'AdminController', '[HomeBanner(id=2, title=22, imageUrl=/uploads/6947b70f-637f-440c-a338-257a527998aa.jpeg, linkUrl=, sortOrder=0, isActive=1)]', '0:0:0:0:0:0:0:1', '2025-12-28 16:40:48');
+INSERT INTO `sys_log` VALUES (263, 'AdminSystem', 'getBanners', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 16:40:48');
+INSERT INTO `sys_log` VALUES (264, 'AdminSystem', 'saveBanner', 'AdminController', '[HomeBanner(id=3, title=33, imageUrl=/uploads/03b1be38-7810-4ac7-8e8c-9359bc433743.jpeg, linkUrl=, sortOrder=0, isActive=1)]', '0:0:0:0:0:0:0:1', '2025-12-28 16:41:10');
+INSERT INTO `sys_log` VALUES (265, 'AdminSystem', 'getBanners', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 16:41:10');
+INSERT INTO `sys_log` VALUES (266, 'AdminSystem', 'getLogs', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 16:41:15');
+INSERT INTO `sys_log` VALUES (267, 'AdminSystem', 'getBanners', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 16:41:15');
+INSERT INTO `sys_log` VALUES (268, 'AdminSystem', 'getLogs', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 16:52:02');
+INSERT INTO `sys_log` VALUES (269, 'AdminSystem', 'getBanners', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 16:52:02');
+INSERT INTO `sys_log` VALUES (270, 'AdminSystem', 'getBanners', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 16:52:03');
+INSERT INTO `sys_log` VALUES (271, 'AdminSystem', 'getPendingCourses', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 16:52:03');
+INSERT INTO `sys_log` VALUES (272, 'AdminSystem', 'getLogs', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 16:52:04');
+INSERT INTO `sys_log` VALUES (273, 'AdminSystem', 'getBanners', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 16:52:04');
+INSERT INTO `sys_log` VALUES (274, 'AdminSystem', 'getBanners', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 16:52:05');
+INSERT INTO `sys_log` VALUES (275, 'AdminSystem', 'getAllUsers', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 16:52:07');
+INSERT INTO `sys_log` VALUES (276, 'AdminSystem', 'getAllUsers', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 16:52:38');
+INSERT INTO `sys_log` VALUES (277, 'AdminSystem', 'getAllUsers', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 16:55:44');
+INSERT INTO `sys_log` VALUES (278, 'AdminSystem', 'getAllUsers', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 16:57:48');
+INSERT INTO `sys_log` VALUES (279, 'AdminSystem', 'addUser', 'AdminController', '[User(userId=null, username=202502, password=null, realName=kk, role=student, avatar=null, phone=null, email=null, studentNo=null, balance=1000.00, createTime=null, firstLogin=true, roles=[])]', '0:0:0:0:0:0:0:1', '2025-12-28 16:57:58');
+INSERT INTO `sys_log` VALUES (280, 'AdminSystem', 'getAllUsers', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 16:57:58');
+INSERT INTO `sys_log` VALUES (281, 'AdminSystem', 'getBanners', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 17:12:12');
+INSERT INTO `sys_log` VALUES (282, 'AdminSystem', 'getLogs', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 17:12:13');
+INSERT INTO `sys_log` VALUES (283, 'AdminSystem', 'getBanners', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 17:12:13');
+INSERT INTO `sys_log` VALUES (284, 'AdminSystem', 'getLogs', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 17:12:14');
+INSERT INTO `sys_log` VALUES (285, 'AdminSystem', 'getPendingCourses', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 17:12:15');
+INSERT INTO `sys_log` VALUES (286, 'AdminSystem', 'getAllUsers', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 17:12:19');
+INSERT INTO `sys_log` VALUES (287, 'AdminSystem', 'getAllUsers', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 17:13:08');
+INSERT INTO `sys_log` VALUES (288, 'AdminSystem', 'getLogs', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 17:18:15');
+INSERT INTO `sys_log` VALUES (289, 'AdminSystem', 'getBanners', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 17:18:15');
+INSERT INTO `sys_log` VALUES (290, 'AdminSystem', 'getAllUsers', 'AdminController', '[]', '0:0:0:0:0:0:0:1', '2025-12-28 17:18:16');
+INSERT INTO `sys_log` VALUES (291, 'AdminSystem', 'resetPassword', 'AdminController', '[{userId=5}]', '0:0:0:0:0:0:0:1', '2025-12-28 17:18:18');
 
 -- ----------------------------
 -- Table structure for sys_message
@@ -657,21 +699,23 @@ CREATE TABLE `sys_user`  (
   `email` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   `student_no` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   `balance` decimal(38, 2) NOT NULL,
+  `first_login` tinyint(1) NULL DEFAULT 1,
   PRIMARY KEY (`user_id`) USING BTREE,
   UNIQUE INDEX `username`(`username` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 13 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '用户表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 14 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '用户表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of sys_user
 -- ----------------------------
-INSERT INTO `sys_user` VALUES (5, 'student1', '$2a$10$3knQo8c69MG6zASQTwp7YO6MBpCNZHgdXKH0M1Uc/amMcJ2kvQOQC', '???', NULL, '2025-12-12 18:07:25', 'student', NULL, NULL, NULL, NULL, 1111.00);
-INSERT INTO `sys_user` VALUES (6, 'student999', '$2a$10$C60fkYPpBiOD.V6VKv5e9uhfYGKPwyps7dUTDFkjGw/1YRiejnfIi', '???', NULL, '2025-12-13 00:23:37', 'teacher', NULL, NULL, NULL, NULL, 0.00);
-INSERT INTO `sys_user` VALUES (7, 'test001', '$2a$10$n03xzZwjNhpX9w2amvm.g.0XO0wKdO4Ayswjr7qrLMTi9Gak1EgV2', '测试老师', NULL, '2025-12-14 16:29:42', 'teacher', NULL, NULL, NULL, NULL, 0.00);
-INSERT INTO `sys_user` VALUES (8, 'admin', '$2a$10$3knQo8c69MG6zASQTwp7YO6MBpCNZHgdXKH0M1Uc/amMcJ2kvQOQC', '系统管理员', NULL, '2025-12-14 17:42:45', 'admin', NULL, NULL, NULL, NULL, 0.00);
-INSERT INTO `sys_user` VALUES (9, 'admin2', '$2a$10$2L.3Y0Z2ZhI7mNOIyEzRF.o1eT/DarEBtaPa/WoJyxnlTgXmGNjlK', '测试管理员', NULL, '2025-12-16 01:01:54', 'admin', NULL, NULL, NULL, NULL, 0.00);
-INSERT INTO `sys_user` VALUES (10, '202501', '$2a$10$U5ekxklFMCwj3AOQzsSqDuIQefJ0cx9wErlf5CiSjjZ6jUgJSpofq', '坤坤', NULL, '2025-12-16 16:11:05', 'student', NULL, NULL, NULL, NULL, 0.00);
-INSERT INTO `sys_user` VALUES (11, 't001', '$2a$10$fexraLMqNmni5P1TQHuhYuEK95d5j8SdIu0pnp7b9p/4ikEWtZT/.', '坤老师', NULL, '2025-12-16 16:11:21', 'teacher', NULL, NULL, NULL, NULL, 0.00);
-INSERT INTO `sys_user` VALUES (12, 't002', '$2a$10$bQ.isU.l2W4FZYjr2rNRxuuLfwJAkRP37hMbBFzmKkdwVprl8QlBq', '叮叮当', NULL, '2025-12-19 16:39:48', 'teacher', NULL, NULL, NULL, NULL, 1000.00);
+INSERT INTO `sys_user` VALUES (5, 'student1', '$2a$10$JOYRMZNGRix6FS3bXCkHDuDY/edVXRK.rbBy2Piahw.aMpffoGHR.', '???', NULL, '2025-12-12 18:07:25', 'student', NULL, NULL, NULL, NULL, 1111.00, 0);
+INSERT INTO `sys_user` VALUES (6, 'student999', '$2a$10$C60fkYPpBiOD.V6VKv5e9uhfYGKPwyps7dUTDFkjGw/1YRiejnfIi', '???', NULL, '2025-12-13 00:23:37', 'teacher', NULL, NULL, NULL, NULL, 0.00, 1);
+INSERT INTO `sys_user` VALUES (7, 'test001', '$2a$10$G5SGCzo7vfW6gCNpn9uXy.p9W5mTj00xXC3ZcUePVoDF2Q93B5MeC', '测试老师', NULL, '2025-12-14 16:29:42', 'teacher', NULL, NULL, NULL, NULL, 0.00, 0);
+INSERT INTO `sys_user` VALUES (8, 'admin', '$2a$10$qhQdN2iI0o2arCOjWV0U6Oj/FvjfZ08UPARgPw50.LZ3IecG57d2K', '系统管理员', NULL, '2025-12-14 17:42:45', 'admin', NULL, NULL, NULL, NULL, 0.00, 0);
+INSERT INTO `sys_user` VALUES (9, 'admin2', '$2a$10$2L.3Y0Z2ZhI7mNOIyEzRF.o1eT/DarEBtaPa/WoJyxnlTgXmGNjlK', '测试管理员', NULL, '2025-12-16 01:01:54', 'admin', NULL, NULL, NULL, NULL, 0.00, 1);
+INSERT INTO `sys_user` VALUES (10, '202501', '$2a$10$U5ekxklFMCwj3AOQzsSqDuIQefJ0cx9wErlf5CiSjjZ6jUgJSpofq', '坤坤', NULL, '2025-12-16 16:11:05', 'student', NULL, NULL, NULL, NULL, 0.00, 1);
+INSERT INTO `sys_user` VALUES (11, 't001', '$2a$10$fexraLMqNmni5P1TQHuhYuEK95d5j8SdIu0pnp7b9p/4ikEWtZT/.', '坤老师', NULL, '2025-12-16 16:11:21', 'teacher', NULL, NULL, NULL, NULL, 0.00, 1);
+INSERT INTO `sys_user` VALUES (12, 't002', '$2a$10$bQ.isU.l2W4FZYjr2rNRxuuLfwJAkRP37hMbBFzmKkdwVprl8QlBq', '叮叮当', NULL, '2025-12-19 16:39:48', 'teacher', NULL, NULL, NULL, NULL, 1000.00, 1);
+INSERT INTO `sys_user` VALUES (13, '202502', '$2a$10$oLOZK8vQYvVmqAzRkPOvb.5JRIeiQePnyTUvqgB/eRG52u09o28tq', 'kk', NULL, '2025-12-28 16:57:58', 'student', NULL, NULL, NULL, NULL, 1000.00, 1);
 
 -- ----------------------------
 -- Table structure for sys_user_role

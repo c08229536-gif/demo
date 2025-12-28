@@ -7,6 +7,26 @@
 
     <el-row :gutter="20">
       <el-col :span="16">
+
+        <!-- 课程封面 -->
+        <div class="course-cover-container">
+          <el-image
+            :src="course.cover || '/src/assets/default-cover.png'"
+            fit="cover"
+            class="course-cover-image"
+          />
+          <el-button 
+            v-if="userRole === 'teacher' || userRole === 'admin'"
+            class="change-cover-btn" 
+            type="primary" 
+            plain 
+            circle
+            @click="coverDialogVisible = true"
+          >
+            <el-icon><Camera /></el-icon>
+          </el-button>
+        </div>
+
         <div class="video-player">
           <video v-if="currentVideoUrl" :src="currentVideoUrl" controls autoplay class="real-video" @ended="handleVideoEnded"></video>
           <div v-else class="placeholder">
@@ -163,6 +183,11 @@
             <el-button type="success" @click="assignmentDialogVisible = true">
               <el-icon style="margin-right: 5px"><Edit /></el-icon> 发布作业
             </el-button>
+            
+            <el-button type="danger" @click="examDialogVisible = true">
+              <el-icon style="margin-right: 5px"><DocumentAdd /></el-icon> 发布试卷
+            </el-button>
+            
             <el-button type="warning" @click="chapterDialogVisible = true">
               <el-icon style="margin-right: 5px"><VideoCamera /></el-icon> 添加章节
             </el-button>
@@ -221,13 +246,15 @@
       </template>
     </el-dialog>
 
+    <input type="file" ref="fileInput" @change="handleFileSelectForExam" style="display: none" accept=".xlsx, .xls" />
+
     <el-dialog v-model="resourceDialogVisible" title="添加课件资料" width="500px">
       <el-form label-width="80px">
         <el-form-item label="上传文件">
           <el-upload
             class="upload-demo"
             drag
-            action="/api/upload/file"
+            action="/upload/file"
             :show-file-list="false"
             :on-success="handleUploadSuccess"
             :before-upload="beforeUpload"
@@ -265,6 +292,8 @@
       </template>
     </el-dialog>
 
+    <input type="file" ref="fileInput" @change="handleFileSelectForExam" style="display: none" accept=".xlsx, .xls" />
+
     <el-dialog v-model="assignmentDialogVisible" title="布置新作业" width="500px">
       <el-form label-width="80px">
         <el-form-item label="标题"><el-input v-model="newAssignment.title" /></el-form-item>
@@ -274,6 +303,8 @@
       <template #footer><el-button @click="assignmentDialogVisible=false">取消</el-button><el-button type="primary" @click="handlePublishAssignment">确认</el-button></template>
     </el-dialog>
 
+    <input type="file" ref="fileInput" @change="handleFileSelectForExam" style="display: none" accept=".xlsx, .xls" />
+
     <el-dialog v-model="chapterDialogVisible" title="添加章节" width="500px">
       <el-form label-width="80px">
         <el-form-item label="标题"><el-input v-model="newChapter.title" /></el-form-item>
@@ -282,16 +313,113 @@
       </el-form>
       <template #footer><el-button @click="chapterDialogVisible=false">取消</el-button><el-button type="primary" @click="handleAddChapter">确认</el-button></template>
     </el-dialog>
+
+    <input type="file" ref="fileInput" @change="handleFileSelectForExam" style="display: none" accept=".xlsx, .xls" />
+
+    <el-dialog v-model="examDialogVisible" title="发布考试试卷" width="700px" top="5vh">
+      <el-form label-width="90px">
+        <el-row :gutter="20">
+           <el-col :span="12">
+             <el-form-item label="试卷标题">
+               <el-input v-model="newExam.title" placeholder="如：期末考试A卷" />
+             </el-form-item>
+           </el-col>
+           <el-col :span="12">
+             <el-form-item label="时长(分钟)">
+               <el-input-number v-model="newExam.duration" :min="10" />
+             </el-form-item>
+           </el-col>
+        </el-row>
+        <el-row :gutter="20">
+           <el-col :span="12">
+             <el-form-item label="总分">
+               <el-input-number v-model="newExam.totalScore" :min="0" />
+             </el-form-item>
+           </el-col>
+        </el-row>
+
+        <el-divider content-position="left">试题列表</el-divider>
+        
+        <div v-for="(q, idx) in newExam.questions" :key="idx" class="question-edit-item">
+           <div class="q-header">
+             <span>题目 {{ idx + 1 }}</span>
+             <el-button type="danger" link size="small" @click="removeQuestion(idx)">删除</el-button>
+           </div>
+           <el-input v-model="q.content" placeholder="输入题目描述" type="textarea" :rows="2" style="margin-bottom: 5px;" />
+           <el-row :gutter="10">
+             <el-col :span="6">
+               <el-select v-model="q.type" placeholder="类型" size="small">
+                 <el-option label="单选题" value="single" />
+                 <el-option label="判断题" value="judge" />
+                 <el-option label="简答题" value="text" />
+               </el-select>
+             </el-col>
+             <el-col :span="12">
+               <el-input v-model="q.options" placeholder="选项(如: A.对 B.错)" size="small" />
+             </el-col>
+             <el-col :span="6">
+               <el-input-number v-model="q.score" :min="1" size="small" controls-position="right" placeholder="分值" />
+             </el-col>
+           </el-row>
+           <div style="margin-top: 5px;">
+             <el-input v-model="q.answer" placeholder="参考答案" size="small">
+               <template #prepend>答案</template>
+             </el-input>
+           </div>
+        </div>
+
+        <el-button type="primary" plain style="width: 49%; margin-top: 10px; border-style: dashed;" @click="addQuestion">
+           <el-icon><Plus /></el-icon> 添加一道题目
+        </el-button>
+        <el-button type="success" plain style="width: 49%; margin-top: 10px; border-style: dashed;" @click="triggerFileUpload">
+           <el-icon><UploadFilled /></el-icon> 从 Excel 批量导入
+        </el-button>
+
+      </el-form>
+      <template #footer>
+        <el-button @click="examDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handlePublishExam">立即发布</el-button>
+      </template>
+    </el-dialog>
+
+    <input type="file" ref="fileInput" @change="handleFileSelectForExam" style="display: none" accept=".xlsx, .xls" />
+
+    <!-- 新增：更换封面弹窗 -->
+    <el-dialog v-model="coverDialogVisible" title="更换课程封面" width="500px">
+      <el-upload
+        class="cover-uploader"
+        drag
+        action="/api/upload"
+        :show-file-list="false"
+        :on-success="handleCoverUploadSuccess"
+        :before-upload="beforeCoverUpload"
+      >
+        <img v-if="newCoverUrl" :src="newCoverUrl" class="cover-preview" />
+        <div v-else class="uploader-icon">
+          <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+          <div class="el-upload__text">
+            拖拽图片到此处或 <em>点击上传</em>
+          </div>
+        </div>
+      </el-upload>
+      <template #footer>
+        <el-button @click="coverDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleUpdateCover">确认更换</el-button>
+      </template>
+    </el-dialog>
+
+    <input type="file" ref="fileInput" @change="handleFileSelectForExam" style="display: none" accept=".xlsx, .xls" />
+
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, reactive } from 'vue'
 import { useRoute } from 'vue-router'
-// 👇 修改点2：添加了 Warning 图标的引入
-import { VideoPlay, Edit, VideoCamera, Check, Upload, Document, UploadFilled, CircleCheckFilled, Lock, Warning } from '@element-plus/icons-vue'
+import { VideoPlay, Edit, VideoCamera, Check, Upload, Document, UploadFilled, CircleCheckFilled, Lock, Warning, DocumentAdd, Plus, Camera } from '@element-plus/icons-vue'
 import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import * as XLSX from 'xlsx'
 
 const route = useRoute()
 const course = ref({})
@@ -304,14 +432,14 @@ const currentVideoUrl = ref('')
 const finishedChapterIds = ref([])
 const activeTab = ref('resources') // 默认看资料
 
-// 👇 新增：支付相关变量
+// 支付相关变量
 const isEnrolled = ref(false)
 const paymentDialogVisible = ref(false)
 const paying = ref(false)
 const myBalance = ref('0.00')
 const myUserId = ref(null)
 
-// 👇 新增：评价相关变量
+// 评价相关变量
 const reviewList = ref([])
 const myRating = ref(5)
 const myComment = ref('')
@@ -320,10 +448,22 @@ const myComment = ref('')
 const assignmentDialogVisible = ref(false)
 const chapterDialogVisible = ref(false)
 const resourceDialogVisible = ref(false)
+const examDialogVisible = ref(false) // 👈 新增：考试弹窗控制
+const fileInput = ref(null) // 👈 新增：文件上传input的引用
+const coverDialogVisible = ref(false)
 
 const newAssignment = ref({ title: '', description: '', deadline: '', courseId: null })
 const newChapter = ref({ title: '', videoUrl: '', sortOrder: 1, courseId: null })
 const newResource = ref({ title: '', url: '', fileType: 'ppt', courseId: null })
+const newCoverUrl = ref('')
+
+// 👇 新增：试卷对象，结构需匹配后端 AdminController
+const newExam = ref({
+  title: '',
+  duration: 60,
+  totalScore: 100,
+  questions: []
+})
 
 const newQuestion = ref('')
 
@@ -343,12 +483,12 @@ const init = async () => {
   fetchChapters(courseId)
   fetchResources(courseId)
   fetchQA(courseId)
-  fetchReviews(courseId) // 👈 新增：加载评价
+  fetchReviews(courseId)
   
   if (userRole.value === 'student') {
     fetchProgress(courseId)
-    checkEnrollStatus(courseId) // 👈 新增：检查是否已购买
-    fetchMyBalance()            // 👈 新增：获取最新余额
+    checkEnrollStatus(courseId)
+    fetchMyBalance()
   } else {
     activeTab.value = 'students' // 老师默认看学员
     fetchCourseStudents(courseId)
@@ -370,7 +510,7 @@ const fetchChapters = async (cid) => {
   const res = await axios.get(`/api/course/${cid}/chapters`); chapters.value = res.data
 }
 
-// 👇 新增：检查购买状态
+// 检查购买状态
 const checkEnrollStatus = async (cid) => {
   try {
     const res = await axios.get(`/api/course/${cid}/is-enrolled`)
@@ -378,7 +518,7 @@ const checkEnrollStatus = async (cid) => {
   } catch(e) { isEnrolled.value = false }
 }
 
-// 👇 新增：获取我的余额
+// 获取我的余额
 const fetchMyBalance = async () => {
   try {
     const res = await axios.get('/api/auth/me')
@@ -386,7 +526,7 @@ const fetchMyBalance = async () => {
   } catch(e) {}
 }
 
-// 👇 修改点3：新增充值功能函数
+// 充值功能函数
 const handleQuickRecharge = () => {
   ElMessageBox.prompt('请输入充值金额', '钱包充值', {
     confirmButtonText: '充值',
@@ -396,23 +536,20 @@ const handleQuickRecharge = () => {
     inputErrorMessage: '金额格式不正确'
   }).then(async ({ value }) => {
     try {
-      // 假设充值接口为 /api/payment/recharge
       await axios.post('/api/payment/recharge', {
         userId: myUserId.value,
         amount: parseFloat(value)
       })
       ElMessage.success(`成功充值 ${value} 元！`)
-      fetchMyBalance() // 充值成功后立即刷新余额
+      fetchMyBalance() 
     } catch (error) {
       console.error(error)
       ElMessage.error(error.response?.data?.message || '充值失败，请检查接口')
     }
-  }).catch(() => {
-    // 取消充值不做处理
-  })
+  }).catch(() => {})
 }
 
-// 👇 新增：处理支付逻辑
+// 处理支付逻辑
 const handlePay = async () => {
   paying.value = true
   try {
@@ -424,7 +561,7 @@ const handlePay = async () => {
     paymentDialogVisible.value = false
     isEnrolled.value = true
     fetchMyBalance()
-    init() // 重新刷新数据
+    init() 
   } catch (error) {
     ElMessage.error(error.response?.data?.message || '支付失败')
   } finally {
@@ -457,8 +594,8 @@ const handleUploadSuccess = (response, uploadFile) => {
   newResource.value.url = response
   ElMessage.success('文件上传成功！')
   if (!newResource.value.title) {
-     const name = uploadFile.name
-     newResource.value.title = name.substring(0, name.lastIndexOf('.'))
+      const name = uploadFile.name
+      newResource.value.title = name.substring(0, name.lastIndexOf('.'))
   }
 }
 const beforeUpload = (rawFile) => {
@@ -474,7 +611,7 @@ const handleDownload = (row) => {
   window.open(downloadUrl, '_self')
 }
 
-// 👇 新增：评价相关函数
+// 评价相关函数
 const fetchReviews = async (cid) => {
   try {
     const res = await axios.get(`/api/review/course/${cid}`)
@@ -540,10 +677,6 @@ const handleVideoEnded = () => {
     ElMessage.success('自动打卡成功')
   }
 }
-const handleEnroll = async () => {
-  // 此方法已弃用，改为使用 handlePay 进行购买
-  paymentDialogVisible.value = true
-}
 const handlePublishAssignment = async () => {
   if (!newAssignment.value.title) return ElMessage.warning('标题不能为空')
   try { await axios.post('/api/assignment/add', newAssignment.value); ElMessage.success('发布成功'); assignmentDialogVisible.value=false } 
@@ -555,6 +688,135 @@ const handleAddChapter = async () => {
   catch(e) { ElMessage.error('添加失败') }
 }
 
+// ==== 封面上传相关 ====
+const handleCoverUploadSuccess = (response) => {
+  newCoverUrl.value = response
+  ElMessage.success('图片上传成功！')
+}
+
+const beforeCoverUpload = (rawFile) => {
+  const isImg = ['image/jpeg', 'image/png', 'image/gif'].includes(rawFile.type)
+  const isLt2M = rawFile.size / 1024 / 1024 < 2
+
+  if (!isImg) {
+    ElMessage.error('只能上传 JPG/PNG/GIF 格式的图片!')
+  }
+  if (!isLt2M) {
+    ElMessage.error('图片大小不能超过 2MB!')
+  }
+  return isImg && isLt2M
+}
+
+const handleUpdateCover = async () => {
+  if (!newCoverUrl.value) {
+    return ElMessage.warning('请先上传一张新的封面图片')
+  }
+  try {
+    const courseId = route.params.id
+    await axios.post(`/api/course/${courseId}/update-cover`, { coverUrl: newCoverUrl.value })
+    
+    // 更新视图并关闭弹窗
+    course.value.cover = newCoverUrl.value
+    ElMessage.success('封面更新成功！')
+    coverDialogVisible.value = false
+    newCoverUrl.value = ''
+
+  } catch (error) {
+    console.error(error)
+    ElMessage.error(error.response?.data || '封面更新失败')
+  }
+}
+
+// 👇 新增：试卷管理相关方法
+const addQuestion = () => {
+  newExam.value.questions.push({
+    content: '',
+    type: 'single',
+    options: '',
+    answer: '',
+    score: 5
+  })
+}
+
+const removeQuestion = (idx) => {
+  newExam.value.questions.splice(idx, 1)
+}
+
+const handlePublishExam = async () => {
+  if (!newExam.value.title) return ElMessage.warning('请填写试卷标题')
+  if (newExam.value.questions.length === 0) return ElMessage.warning('请至少添加一道题目')
+  
+  // 组装 payload，必须包含 courseId
+  const payload = {
+    ...newExam.value,
+    courseId: parseInt(route.params.id)
+  }
+  
+  try {
+    // 调用后端 AdminController 中的接口
+    await axios.post('/api/admin/exam/publish', payload)
+    ElMessage.success('试卷发布成功！')
+    examDialogVisible.value = false
+    // 重置表单
+    newExam.value = { title: '', duration: 60, totalScore: 100, questions: [] }
+  } catch (error) {
+    console.error(error)
+    ElMessage.error(error.response?.data?.message || '发布失败')
+  }
+}
+
+// ==== 批量导入题目相关 ====
+const triggerFileUpload = () => {
+  fileInput.value.click()
+}
+
+const handleFileSelectForExam = (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    const data = new Uint8Array(e.target.result)
+    const workbook = XLSX.read(data, { type: 'array' })
+    const firstSheetName = workbook.SheetNames[0]
+    const worksheet = workbook.Sheets[firstSheetName]
+    
+    // 将工作表转换为JSON对象数组，header: 1 表示第一行是数据
+    const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
+
+    // 约定列顺序: [题目描述, 题型, 选项, 答案, 分值]
+    // 题型需要从 "单选题" 映射到 "single" 等
+    const typeMap = {
+      '单选题': 'single',
+      '判断题': 'judge',
+      '简答题': 'text'
+    }
+
+    // 从第二行开始读取，忽略表头
+    const questionsFromFile = json.slice(1).map(row => {
+      const type = typeMap[row[1]] || 'single' // 默认单选题
+      return {
+        content: row[0],
+        type: type,
+        options: row[2] || '',
+        answer: row[3],
+        score: parseInt(row[4]) || 5, // 默认5分
+      }
+    }).filter(q => q.content && q.answer) // 过滤无效数据
+
+    if (questionsFromFile.length > 0) {
+      newExam.value.questions.push(...questionsFromFile)
+      ElMessage.success(`成功导入 ${questionsFromFile.length} 道题目！`)
+    } else {
+      ElMessage.warning('未在文件中解析到有效题目数据，请检查文件格式。')
+    }
+
+    // 清空input的值，以便可以再次上传同一个文件
+    fileInput.value.value = ''
+  }
+  reader.readAsArrayBuffer(file)
+}
+
 onMounted(() => { init() })
 </script>
 
@@ -562,6 +824,34 @@ onMounted(() => { init() })
 .video-player { width: 100%; height: 400px; background: #000; display: flex; justify-content: center; align-items: center; color: #fff; }
 .real-video { width: 100%; height: 100%; }
 .teacher-info { display: flex; align-items: center; gap: 15px; }
+.course-cover-container {
+  width: 100%;
+  height: 250px; /* 或者你想要的高度 */
+  margin-bottom: 20px;
+  position: relative;
+}
+.course-cover-image {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+}
+.change-cover-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+}
+.cover-uploader {
+  text-align: center;
+}
+.cover-preview {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 6px;
+}
+.uploader-icon {
+  padding: 40px 0;
+}
+
 .chapter-item { padding: 12px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; cursor: pointer;}
 .chapter-item:hover { background: #f5f7fa; }
 .chapter-item.active { background: #e6f7ff; color: #409EFF; }
@@ -572,11 +862,27 @@ onMounted(() => { init() })
 .qa-reply { background: #f9f9f9; padding: 10px; border-radius: 4px; margin-top: 5px; font-size: 14px;}
 .teacher-tag { color: #409EFF; font-weight: bold; }
 
-/* 👇 新增评价样式 */
 .review-box { background: #fdfdfd; padding: 15px; border: 1px solid #eee; border-radius: 4px; margin-bottom: 20px;}
 .review-item { padding: 15px 0; border-bottom: 1px solid #eee; }
 .review-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 14px; color: #666; }
 .review-content { font-size: 15px; color: #333; line-height: 1.5; padding-left: 40px;}
 .student-name { font-weight: bold; color: #333; }
 .time { margin-left: auto; font-size: 12px; color: #999; }
+
+/* 试卷题目编辑样式 */
+.question-edit-item {
+  background: #f8f9fa;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  border: 1px solid #eee;
+}
+.q-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #606266;
+  font-size: 13px;
+}
 </style>

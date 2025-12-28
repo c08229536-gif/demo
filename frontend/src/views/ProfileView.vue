@@ -37,8 +37,9 @@
             </el-descriptions-item>
           </el-descriptions>
 
-          <div style="margin-top: 20px; text-align: center;">
+          <div style="margin-top: 20px; text-align: center; display: flex; justify-content: center; gap: 10px;">
              <el-button type="primary" @click="openEditDialog">编辑资料</el-button>
+             <el-button type="warning" @click="openPasswordDialog">修改密码</el-button>
           </div>
         </el-card>
       </el-col>
@@ -93,13 +94,34 @@
       </template>
     </el-dialog>
 
+    <el-dialog v-model="passwordDialogVisible" title="修改密码" width="400px">
+      <el-form :model="passwordForm" ref="passwordFormRef" :rules="passwordRules" label-width="100px">
+        <el-form-item label="旧密码" prop="oldPassword">
+          <el-input type="password" v-model="passwordForm.oldPassword" show-password />
+        </el-form-item>
+        <el-form-item label="新密码" prop="newPassword">
+          <el-input type="password" v-model="passwordForm.newPassword" show-password />
+        </el-form-item>
+        <el-form-item label="确认新密码" prop="confirmPassword">
+          <el-input type="password" v-model="passwordForm.confirmPassword" show-password />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="passwordDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleChangePassword">确认修改</el-button>
+      </template>
+    </el-dialog>
+
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, reactive, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+
+const router = useRouter()
 
 const userInfo = ref({})
 const stats = ref({ courseCount: 0, assignmentCount: 0 })
@@ -110,6 +132,64 @@ const editForm = reactive({
   phone: '',
   email: ''
 })
+
+// --- 修改密码相关 ---
+const passwordDialogVisible = ref(false)
+const passwordFormRef = ref(null)
+const passwordForm = reactive({
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+})
+
+const validatePass2 = (rule, value, callback) => {
+  if (value === '') {
+    callback(new Error('请再次输入密码'))
+  } else if (value !== passwordForm.newPassword) {
+    callback(new Error("两次输入不一致!"))
+  } else {
+    callback()
+  }
+}
+
+const passwordRules = {
+  oldPassword: [{ required: true, message: '请输入旧密码', trigger: 'blur' }],
+  newPassword: [{ required: true, message: '请输入新密码', trigger: 'blur' }, { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }],
+  confirmPassword: [{ required: true, validator: validatePass2, trigger: 'blur' }]
+}
+
+const openPasswordDialog = () => {
+  passwordDialogVisible.value = true
+  // 重置表单状态
+  if (passwordFormRef.value) {
+    passwordFormRef.value.resetFields()
+  }
+  passwordForm.oldPassword = ''
+  passwordForm.newPassword = ''
+  passwordForm.confirmPassword = ''
+}
+
+const handleChangePassword = async () => {
+  if (!passwordFormRef.value) return
+  await passwordFormRef.value.validate(async (valid) => {
+    if (valid) {
+      try {
+        await axios.post('/api/auth/update-password', {
+          oldPassword: passwordForm.oldPassword,
+          newPassword: passwordForm.newPassword
+        })
+        ElMessage.success('密码修改成功，请重新登录')
+        passwordDialogVisible.value = false
+        // 强制退出
+        localStorage.removeItem('token')
+        localStorage.removeItem('userRole')
+        router.push('/')
+      } catch (error) {
+        ElMessage.error(error.response?.data?.message || error.response?.data || '密码修改失败，请检查旧密码是否正确')
+      }
+    }
+  })
+}
 
 // 👇 计算属性：根据角色决定显示“学号”还是“工号”
 const accountLabel = computed(() => {

@@ -7,6 +7,10 @@
         <el-icon style="margin-right: 5px"><Plus /></el-icon>
         新增用户 (分配账号)
       </el-button>
+      <el-button type="success" @click="openBatchAddDialog">
+        <el-icon style="margin-right: 5px"><UploadFilled /></el-icon>
+        批量导入 (Excel)
+      </el-button>
     </div>
 
     <el-card>
@@ -72,6 +76,53 @@
       </template>
     </el-dialog>
 
+    <!-- 批量导入对话框 -->
+    <el-dialog v-model="batchAddDialogVisible" title="批量导入用户" width="500px">
+      <el-upload
+        class="upload-demo"
+        drag
+        action="#"
+        :auto-upload="false"
+        :on-change="handleFileChange"
+        :limit="1"
+      >
+        <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
+        <div class="el-upload__text">
+          将 Excel 文件拖到此处，或 <em>点击上传</em>
+        </div>
+        <template #tip>
+          <div class="el-upload__tip">
+            请上传 xlsx/xls 格式的 Excel 文件。文件应包含两列：第一列为学号/工号，第二列为真实姓名。
+          </div>
+        </template>
+      </el-upload>
+
+      <div style="margin-top: 20px;">
+        <el-form-item label="导入为角色：">
+            <el-radio-group v-model="batchAddRole">
+                <el-radio label="student">学生</el-radio>
+                <el-radio label="teacher">教师</el-radio>
+            </el-radio-group>
+        </el-form-item>
+      </div>
+      
+      <div v-if="parsedUsers.length > 0" style="margin-top: 20px;">
+        <h4><i class="el-icon-s-grid"></i> 解析到的用户 ({{ parsedUsers.length }} 人):</h4>
+        <el-table :data="parsedUsers.slice(0, 5)" height="150" style="width: 100%;">
+          <el-table-column prop="username" label="学号/工号"></el-table-column>
+          <el-table-column prop="realName" label="真实姓名"></el-table-column>
+        </el-table>
+        <p v-if="parsedUsers.length > 5" style="text-align: center; color: #999;">... 等共 {{ parsedUsers.length }} 条数据</p>
+      </div>
+
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="batchAddDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmBatchAdd" :disabled="parsedUsers.length === 0">确认导入</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="roleDialogVisible" title="变更用户角色" width="400px">
       <p>正在修改用户：<strong>{{ editingUser.realName }}</strong></p>
       <div style="margin-top: 20px;">
@@ -86,6 +137,53 @@
         <el-button type="primary" @click="confirmRoleChange">确认修改</el-button>
       </template>
     </el-dialog>
+
+    <!-- 批量导入对话框 -->
+    <el-dialog v-model="batchAddDialogVisible" title="批量导入用户" width="500px">
+      <el-upload
+        class="upload-demo"
+        drag
+        action="#"
+        :auto-upload="false"
+        :on-change="handleFileChange"
+        :limit="1"
+      >
+        <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
+        <div class="el-upload__text">
+          将 Excel 文件拖到此处，或 <em>点击上传</em>
+        </div>
+        <template #tip>
+          <div class="el-upload__tip">
+            请上传 xlsx/xls 格式的 Excel 文件。文件应包含两列：第一列为学号/工号，第二列为真实姓名。
+          </div>
+        </template>
+      </el-upload>
+
+      <div style="margin-top: 20px;">
+        <el-form-item label="导入为角色：">
+            <el-radio-group v-model="batchAddRole">
+                <el-radio label="student">学生</el-radio>
+                <el-radio label="teacher">教师</el-radio>
+            </el-radio-group>
+        </el-form-item>
+      </div>
+      
+      <div v-if="parsedUsers.length > 0" style="margin-top: 20px;">
+        <h4><i class="el-icon-s-grid"></i> 解析到的用户 ({{ parsedUsers.length }} 人):</h4>
+        <el-table :data="parsedUsers.slice(0, 5)" height="150" style="width: 100%;">
+          <el-table-column prop="username" label="学号/工号"></el-table-column>
+          <el-table-column prop="realName" label="真实姓名"></el-table-column>
+        </el-table>
+        <p v-if="parsedUsers.length > 5" style="text-align: center; color: #999;">... 等共 {{ parsedUsers.length }} 条数据</p>
+      </div>
+
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="batchAddDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmBatchAdd" :disabled="parsedUsers.length === 0">确认导入</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -93,7 +191,8 @@
 import { ref, onMounted, computed, reactive } from 'vue'
 import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue' // 记得引入 Plus
+import { Plus, UploadFilled } from '@element-plus/icons-vue' // 记得引入 Plus
+import * as XLSX from 'xlsx'
 
 const users = ref([])
 const currentUsername = ref('')
@@ -101,6 +200,58 @@ const roleDialogVisible = ref(false)
 const addDialogVisible = ref(false)
 const editingUser = ref({})
 const selectedRole = ref('student')
+
+// 批量导入相关
+const batchAddDialogVisible = ref(false)
+const parsedUsers = ref([])
+const batchAddRole = ref('student') // 新增：用于批量导入时选择角色
+
+const openBatchAddDialog = () => {
+  parsedUsers.value = []
+  batchAddDialogVisible.value = true
+}
+
+const handleFileChange = (file) => {
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    const data = new Uint8Array(e.target.result)
+    const workbook = XLSX.read(data, { type: 'array' })
+    const firstSheetName = workbook.SheetNames[0]
+    const worksheet = workbook.Sheets[firstSheetName]
+    const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
+
+    // 假设第一列是 username, 第二列是 realName
+    // 从第二行开始读取，忽略表头
+    const usersFromFile = json.slice(1).map(row => ({
+      username: row[0],
+      realName: row[1]
+    })).filter(u => u.username && u.realName) // 过滤掉无效数据
+
+    parsedUsers.value = usersFromFile
+    if (usersFromFile.length === 0) {
+      ElMessage.warning('未在文件中解析到有效用户数据，请检查文件格式。')
+    }
+  }
+  reader.readAsArrayBuffer(file.raw)
+}
+
+const confirmBatchAdd = async () => {
+  if (parsedUsers.value.length === 0) {
+    ElMessage.warning('没有可导入的用户。')
+    return
+  }
+
+  try {
+    const payload = parsedUsers.value.map(u => ({ ...u, role: batchAddRole.value }))
+    const response = await axios.post('/api/admin/users/batch-add', payload)
+    ElMessage.success(response.data || `批量导入成功！`)
+    batchAddDialogVisible.value = false
+    fetchUsers() // 刷新列表
+  } catch (error) {
+    ElMessage.error(error.response?.data?.message || '批量导入失败')
+  }
+}
+
 
 // 新增用户表单
 const addUserForm = reactive({

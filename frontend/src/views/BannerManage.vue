@@ -36,7 +36,18 @@
           <el-input v-model="form.title" />
         </el-form-item>
         <el-form-item label="图片URL">
-          <el-input v-model="form.imageUrl" placeholder="请输入图片在线链接" />
+          <el-input v-model="form.imageUrl" placeholder="可直接输入链接，或点击右侧上传">
+            <template #append>
+              <el-upload
+                action="/api/upload"
+                :show-file-list="false"
+                :on-success="handleImageUploadSuccess"
+                :before-upload="beforeImageUpload"
+              >
+                <el-button><el-icon><Upload /></el-icon></el-button>
+              </el-upload>
+            </template>
+          </el-input>
         </el-form-item>
         <el-form-item label="跳转链接">
           <el-input v-model="form.linkUrl" />
@@ -57,6 +68,7 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import { Upload } from '@element-plus/icons-vue'
 
 const banners = ref([])
 const dialogVisible = ref(false)
@@ -102,6 +114,24 @@ const handleDelete = async (id) => {
     ElMessage.success('删除成功')
     fetchBanners()
   } catch(e) { ElMessage.error('删除失败') }
+}
+
+const handleImageUploadSuccess = (response) => {
+  form.value.imageUrl = response
+  ElMessage.success('上传成功')
+}
+
+const beforeImageUpload = (rawFile) => {
+  const isImg = ['image/jpeg', 'image/png', 'image/gif'].includes(rawFile.type)
+  const isLt2M = rawFile.size / 1024 / 1024 < 2
+
+  if (!isImg) {
+    ElMessage.error('只能上传 JPG/PNG/GIF 格式的图片!')
+  }
+  if (!isLt2M) {
+    ElMessage.error('图片大小不能超过 2MB!')
+  }
+  return isImg && isLt2M
 }
 
 onMounted(() => fetchBanners())

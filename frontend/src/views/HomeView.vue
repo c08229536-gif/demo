@@ -4,7 +4,6 @@
       <el-aside width="200px" class="aside">
         <div class="logo">在线教育平台</div>
         <el-menu :default-active="$route.path" router class="el-menu-vertical" background-color="#304156" text-color="#fff">
-          <el-menu-item index="/home/profile"><el-icon><User /></el-icon><span>个人中心</span></el-menu-item>
           <el-menu-item index="/home/courses"><el-icon><Reading /></el-icon><span>课程中心</span></el-menu-item>
           
           <template v-if="userRole === 'student'">
@@ -24,6 +23,7 @@
             <el-menu-item index="/home/banner-manage"><el-icon><Picture /></el-icon><span>首页运营</span></el-menu-item>
             <el-menu-item index="/home/log-manage"><el-icon><Monitor /></el-icon><span>系统日志</span></el-menu-item>
           </template>
+          <el-menu-item index="/home/profile"><el-icon><User /></el-icon><span>个人中心</span></el-menu-item>
         </el-menu>
       </el-aside>
 

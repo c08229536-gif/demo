@@ -15,7 +15,7 @@ import java.util.Optional;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/course") // 👈 关键修改：统一加 /api 前缀
+@RequestMapping("/course") // 
 public class CourseController {
 
     @Autowired
@@ -147,5 +147,22 @@ public class CourseController {
             resultList.add(map);
         }
         return resultList;
+    }
+    
+    // === 11. (老师用) 更新课程封面 ===
+    @PostMapping("/{courseId}/update-cover")
+    public String updateCourseCover(@PathVariable Integer courseId, @RequestBody Map<String, String> payload) {
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new RuntimeException("课程不存在"));
+        
+        String coverUrl = payload.get("coverUrl");
+        if (coverUrl == null || coverUrl.isEmpty()) {
+            throw new RuntimeException("封面URL不能为空");
+        }
+        
+        course.setCover(coverUrl);
+        courseRepository.save(course);
+        
+        return "封面更新成功！";
     }
 }

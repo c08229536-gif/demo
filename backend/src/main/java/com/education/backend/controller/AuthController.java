@@ -1,13 +1,17 @@
 package com.education.backend.controller;
 
+import com.education.backend.entity.UpdatePasswordRequest;
 import com.education.backend.entity.User;
 import com.education.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import com.education.backend.repository.StudentCourseRepository;
 import com.education.backend.repository.SubmissionRepository;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -80,5 +84,48 @@ public class AuthController {
         
         userRepository.save(user);
         return "资料更新成功！";
+    }
+
+    @PostMapping("/change-password")
+    @Transactional
+    public String changePassword(@RequestBody Map<String, String> payload) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        String newPassword = payload.get("newPassword");
+
+        if (newPassword == null || newPassword.isEmpty() || newPassword.length() < 6) {
+            return "新密码不能为空或长度小于6位";
+        }
+
+        String encodedPassword = passwordEncoder.encode(newPassword);
+        userRepository.updatePassword(username, encodedPassword);
+
+        return "密码修改成功！";
+    }
+
+    @PostMapping("/update-password")
+    public ResponseEntity<?> updatePassword(@RequestBody UpdatePasswordRequest request) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // 1. Verify old password
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            return ResponseEntity.badRequest().body("旧密码不正确");
+        }
+
+        // 2. Check if new password is valid
+        if (request.getNewPassword() == null || request.getNewPassword().length() < 6) {
+            return ResponseEntity.badRequest().body("新密码格式不正确 (长度至少为6位)");
+        }
+
+        // 3. Update password
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        // If user was forced to change password, this flag should be updated
+        if (user.isFirstLogin()) {
+            user.setFirstLogin(false);
+        }
+        userRepository.save(user);
+
+        return ResponseEntity.ok("密码更新成功");
     }
 }

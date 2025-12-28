@@ -37,7 +37,10 @@ public class User {
     private BigDecimal balance = new BigDecimal("1000.00");
 
     @Column(name = "create_time")
-    private LocalDateTime createTime; 
+    private LocalDateTime createTime;
+
+    @Column(name = "first_login")
+    private boolean firstLogin = true; 
 
     @PrePersist
     public void prePersist() {

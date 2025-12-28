@@ -1,6 +1,9 @@
 package com.education.backend.config;
 
+import com.education.backend.repository.UserRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -17,6 +20,9 @@ import java.util.Arrays;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+    @Autowired
+    private UserRepository userRepository; // 注入 UserRepository
 
     // 🏆 这里的 Bean 定义必须存在，否则 AdminController 启动就会报错
     @Bean
@@ -46,9 +52,13 @@ public class SecurityConfig {
             .formLogin(form -> form
                 .loginProcessingUrl("/login") // 👈 匹配前端 axios.post('/api/login') 经过代理后的路径
                 .successHandler((req, resp, auth) -> {
+                    com.education.backend.entity.User user = userRepository.findByUsername(auth.getName()).get();
+                    String role = user.getRoles().stream().findFirst().get().getRoleName().toLowerCase();
+
                     resp.setContentType("application/json;charset=utf-8");
                     resp.setStatus(HttpServletResponse.SC_OK);
-                    resp.getWriter().write("{\"code\": 200, \"message\": \"登录成功\"}");
+                    String json = String.format("{\"code\": 200, \"message\": \"登录成功\", \"role\": \"%s\", \"firstLogin\": %b}", role, user.isFirstLogin());
+                    resp.getWriter().write(json);
                 })
                 .failureHandler((req, resp, ex) -> {
                     resp.setContentType("application/json;charset=utf-8");
