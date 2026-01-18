@@ -12,6 +12,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 
 @RestController
 @RequestMapping("/admin") // 👈 注意：去掉 /api，以适配 Vite 代理重写规则
@@ -190,6 +200,7 @@ public class AdminController {
         exam.setDuration((Integer) payload.get("duration"));
         exam.setCourseId((Integer) payload.get("courseId"));
         exam.setTotalScore((Integer) payload.get("totalScore"));
+        exam.setWordUrl((String) payload.get("wordUrl"));
         Exam savedExam = examRepository.save(exam);
 
         List<Map<String, Object>> questions = (List<Map<String, Object>>) payload.get("questions");
@@ -197,13 +208,251 @@ public class AdminController {
             ExamQuestion q = new ExamQuestion();
             q.setExamId(savedExam.getId());
             q.setContent((String) qMap.get("content"));
-            q.setType((String) qMap.get("type"));
+            String rawType = (String) qMap.get("type");
+            String finalType = rawType;
+            if ("single".equals(rawType)) {
+                finalType = "单选";
+            } else if ("judge".equals(rawType)) {
+                finalType = "判断";
+            } else if ("text".equals(rawType)) {
+                finalType = "简答";
+            }
+            q.setType(finalType);
             q.setOptions((String) qMap.get("options")); 
             q.setAnswer((String) qMap.get("answer"));
             q.setScore((Integer) qMap.get("score"));
             questionRepository.save(q);
         }
         return "试卷发布成功";
+    }
+
+    @PostMapping("/exam/parse-word")
+    public List<Map<String, Object>> parseWordExam(@RequestBody Map<String, String> payload) {
+        String wordUrl = payload.get("wordUrl");
+        if (wordUrl == null || wordUrl.isEmpty()) {
+            throw new RuntimeException("wordUrl 不能为空");
+        }
+        String fileName = Paths.get(wordUrl).getFileName().toString();
+        Path path = Paths.get(System.getProperty("user.dir"), "uploads", fileName);
+        if (!Files.exists(path)) {
+            throw new RuntimeException("Word 文件不存在: " + fileName);
+        }
+
+        try (XWPFDocument doc = new XWPFDocument(Files.newInputStream(path))) {
+            List<Map<String, Object>> result = new ArrayList<>();
+            Map<String, Object> current = null;
+            Map<String, String> optionsMap = null;
+
+            Pattern qStart = Pattern.compile("^[0-9]+[\\.．、]\\s*(.*)$");
+            Pattern optPattern = Pattern.compile("^([A-Da-d])[\\.．、\\)]\\s*(.+)$");
+            Pattern scorePattern = Pattern.compile("([0-9]+)分");
+
+            String currentSectionType = null;
+            Integer currentSectionScore = null;
+
+            for (XWPFParagraph p : doc.getParagraphs()) {
+                String text = p.getText();
+                if (text == null) continue;
+                text = text.trim();
+                if (text.isEmpty()) continue;
+
+                // Debug log
+                System.out.println("Processing line: [" + text + "]");
+
+                if (text.contains("单项选择题")) {
+                    currentSectionType = "single";
+                    System.out.println("Found Section: single");
+                    Matcher secScoreMatcher = scorePattern.matcher(text);
+                    currentSectionScore = null;
+                    if (secScoreMatcher.find()) {
+                        currentSectionScore = Integer.parseInt(secScoreMatcher.group(1));
+                    }
+                    continue;
+                }
+                if (text.contains("判断题")) {
+                    currentSectionType = "judge";
+                    System.out.println("Found Section: judge");
+                    Matcher secScoreMatcher = scorePattern.matcher(text);
+                    currentSectionScore = null;
+                    if (secScoreMatcher.find()) {
+                        currentSectionScore = Integer.parseInt(secScoreMatcher.group(1));
+                    }
+                    continue;
+                }
+                if (text.contains("填空题") || text.contains("简答题") || text.contains("综合题")) {
+                    currentSectionType = "text";
+                    System.out.println("Found Section: text");
+                    Matcher secScoreMatcher = scorePattern.matcher(text);
+                    currentSectionScore = null;
+                    if (secScoreMatcher.find()) {
+                        currentSectionScore = Integer.parseInt(secScoreMatcher.group(1));
+                    }
+                    continue;
+                }
+
+                Matcher qMatcher = qStart.matcher(text);
+                boolean isQuestionLine = false;
+                String questionContent = null;
+
+                if (qMatcher.find()) {
+                    isQuestionLine = true;
+                    questionContent = qMatcher.group(1).trim();
+                    System.out.println("Matched Question (Standard): " + questionContent);
+                } else if (currentSectionType != null
+                        && !text.startsWith("答案")
+                        && !text.startsWith("【答案】")) {
+                    
+                    // 特殊处理：尝试识别以空格/制表符开头后跟数字的情况 (e.g. " 1. ", "\t1. ")
+                    String trimmedStart = text.trim();
+                    Matcher looseStart = qStart.matcher(trimmedStart);
+                    if (looseStart.find()) {
+                        isQuestionLine = true;
+                        questionContent = looseStart.group(1).trim();
+                        System.out.println("Matched Question (Loose): " + questionContent);
+                    } else {
+                        // 之前的兜底逻辑：靠括号或下划线识别
+                        boolean looksLikeOptionLine = false;
+                        Matcher tmpOpt = optPattern.matcher(text);
+                        if (tmpOpt.find()) {
+                            looksLikeOptionLine = true;
+                        }
+                        if (!looksLikeOptionLine) {
+                            if ((text.contains("（") && text.contains("）"))
+                                    || (text.contains("(") && text.contains(")"))
+                                    || text.contains("___")
+                                    || text.contains("____")
+                                    || text.contains("——")) {
+                                isQuestionLine = true;
+                                questionContent = text;
+                                System.out.println("Matched Question (Heuristic): " + questionContent);
+                            }
+                        }
+                    }
+                }
+
+                if (isQuestionLine) {
+                    if (current != null) {
+                        if (optionsMap != null && !optionsMap.isEmpty()) {
+                            current.put("options", buildOptionsJson(optionsMap));
+                        }
+                        if (!current.containsKey("score")) {
+                            if (currentSectionScore != null) {
+                                current.put("score", currentSectionScore);
+                            } else {
+                                current.put("score", 5);
+                            }
+                        }
+                        if (!current.containsKey("type")) {
+                            if (currentSectionType != null) {
+                                current.put("type", currentSectionType);
+                            } else {
+                                current.put("type", "single");
+                            }
+                        }
+                        result.add(current);
+                    }
+                    current = new LinkedHashMap<>();
+                    optionsMap = new LinkedHashMap<>();
+
+                    String content = questionContent;
+                    Integer score = null;
+                    Matcher sMatcher = scorePattern.matcher(content);
+                    if (sMatcher.find()) {
+                        score = Integer.parseInt(sMatcher.group(1));
+                        content = content.replace(sMatcher.group(0), "").trim();
+                    }
+                    current.put("content", content);
+                    if (score != null) {
+                        current.put("score", score);
+                    }
+                    continue;
+                }
+
+                if (current == null) {
+                    continue;
+                }
+
+                boolean hasOption = false;
+                String[] parts = text.split("\\s{2,}");
+                for (String part : parts) {
+                    String trimmed = part.trim();
+                    if (trimmed.isEmpty()) {
+                        continue;
+                    }
+                    Matcher optMatcher = optPattern.matcher(trimmed);
+                    if (optMatcher.find()) {
+                        String key = optMatcher.group(1).toUpperCase();
+                        String val = optMatcher.group(2).trim();
+                        if (optionsMap == null) {
+                            optionsMap = new LinkedHashMap<>();
+                        }
+                        optionsMap.put(key, val);
+                        hasOption = true;
+                    }
+                }
+                if (hasOption) {
+                    continue;
+                }
+
+                if (text.startsWith("答案") || text.startsWith("【答案】")) {
+                    String answer = text.replace("【答案】", "")
+                            .replace("答案", "")
+                            .replace("：", "")
+                            .replace(":", "")
+                            .trim();
+                    current.put("answer", answer);
+                    if ("正确".equals(answer) || "错误".equals(answer) || "对".equals(answer) || "错".equals(answer)) {
+                        current.put("type", "judge");
+                    } else if (answer.matches("^[A-D]$")) {
+                        current.put("type", "single");
+                    } else {
+                        current.put("type", "text");
+                    }
+                    continue;
+                }
+            }
+
+            if (current != null) {
+                if (optionsMap != null && !optionsMap.isEmpty()) {
+                    current.put("options", buildOptionsJson(optionsMap));
+                }
+                if (!current.containsKey("score")) {
+                    if (currentSectionScore != null) {
+                        current.put("score", currentSectionScore);
+                    } else {
+                        current.put("score", 5);
+                    }
+                }
+                if (!current.containsKey("type")) {
+                    if (currentSectionType != null) {
+                        current.put("type", currentSectionType);
+                    } else {
+                        current.put("type", "single");
+                    }
+                }
+                result.add(current);
+            }
+
+            return result;
+        } catch (Exception e) {
+            throw new RuntimeException("解析 Word 试卷失败: " + e.getMessage(), e);
+        }
+    }
+
+    private String buildOptionsJson(Map<String, String> options) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("{");
+        int i = 0;
+        for (Map.Entry<String, String> e : options.entrySet()) {
+            if (i++ > 0) {
+                sb.append(",");
+            }
+            sb.append("\"").append(e.getKey()).append("\":\"")
+                    .append(e.getValue().replace("\"", "\\\""))
+                    .append("\"");
+        }
+        sb.append("}");
+        return sb.toString();
     }
 
     @GetMapping("/logs")

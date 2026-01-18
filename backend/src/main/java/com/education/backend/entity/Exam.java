@@ -55,6 +55,9 @@ public class Exam {
     // 状态：0-未发布/草稿, 1-已发布
     @Column(name = "state")
     private Integer state;
+
+    @Column(name = "word_url")
+    private String wordUrl;
     
     // 创建时间
     @Column(name = "create_time")
@@ -67,7 +70,7 @@ public class Exam {
             this.createTime = new Date();
         }
         if (this.state == null) {
-            this.state = 0; // 默认为草稿
+            this.state = 0; 
         }
     }
 }

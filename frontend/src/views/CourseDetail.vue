@@ -254,7 +254,7 @@
           <el-upload
             class="upload-demo"
             drag
-            action="/upload/file"
+            action="/api/upload/file"
             :show-file-list="false"
             :on-success="handleUploadSuccess"
             :before-upload="beforeUpload"
@@ -337,6 +337,31 @@
              </el-form-item>
            </el-col>
         </el-row>
+
+        <el-form-item label="Word试卷">
+          <el-upload
+            class="upload-demo"
+            drag
+            action="/api/upload/file"
+            :show-file-list="false"
+            :on-success="handleExamWordUploadSuccess"
+            :before-upload="beforeUploadExamWord"
+            accept=".doc,.docx"
+          >
+            <div v-if="!newExam.wordUrl">
+              <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+              <div class="el-upload__text">
+                拖拽Word文件到此处 或 <em>点击上传</em>
+              </div>
+              <div class="el-upload__tip">仅支持 .doc / .docx</div>
+            </div>
+            <div v-else style="padding: 20px 0;">
+              <el-icon color="#67C23A" size="40"><CircleCheckFilled /></el-icon>
+              <p style="color: #67C23A; margin-top: 10px;">Word试卷已上传</p>
+              <p style="font-size: 12px; color: #999;">{{ newExam.wordUrl }}</p>
+            </div>
+          </el-upload>
+        </el-form-item>
 
         <el-divider content-position="left">试题列表</el-divider>
         
@@ -462,10 +487,44 @@ const newExam = ref({
   title: '',
   duration: 60,
   totalScore: 100,
+  wordUrl: '',
   questions: []
 })
 
 const newQuestion = ref('')
+
+const beforeUploadExamWord = (file) => {
+  const isWord =
+    file.type ===
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    file.type === 'application/msword'
+  if (!isWord) {
+    ElMessage.error('仅支持上传Word文档')
+  }
+  return isWord
+}
+
+const handleExamWordUploadSuccess = async (response) => {
+  newExam.value.wordUrl = typeof response === 'string' ? response : response.url
+  if (!newExam.value.title) {
+    const parts = newExam.value.wordUrl.split('/')
+    newExam.value.title = parts[parts.length - 1]
+  }
+  try {
+    const res = await axios.post('/api/admin/exam/parse-word', {
+      wordUrl: newExam.value.wordUrl
+    })
+    newExam.value.questions = res.data || []
+    if (newExam.value.questions.length > 0) {
+      ElMessage.success(`已从Word解析出 ${newExam.value.questions.length} 道题目`)
+    } else {
+      ElMessage.warning('Word上传成功，但未解析出题目，请检查格式')
+    }
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('Word解析失败，请检查文件格式')
+  }
+}
 
 // 初始化
 const init = async () => {
@@ -744,7 +803,7 @@ const removeQuestion = (idx) => {
 
 const handlePublishExam = async () => {
   if (!newExam.value.title) return ElMessage.warning('请填写试卷标题')
-  if (newExam.value.questions.length === 0) return ElMessage.warning('请至少添加一道题目')
+  if (newExam.value.questions.length === 0) return ElMessage.warning('请至少添加一道题目或提供可解析的Word试卷')
   
   // 组装 payload，必须包含 courseId
   const payload = {
