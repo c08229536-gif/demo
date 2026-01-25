@@ -48,28 +48,36 @@ public class AuthController {
 
     // === 👇 新增：获取当前登录用户信息 ===
     @GetMapping("/me")
-    public Map<String, Object> getCurrentUserInfo() {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
-        
-        // 统计数据
-        int courseCount = studentCourseRepository.findByUserId(user.getUserId()).size();
-        // 这里的 submissionRepository 需要加一个 countByStudentId 方法，或者直接查列表 size
-        // 假设 Repository 里没有 count 方法，我们可以先查列表 (虽然性能不是最优，但简单)
-        // int homeworkCount = submissionRepository.findByStudentId(user.getUserId()).size(); 
-        // 暂时先返回 mock 数据或者你需要去 Repository 加方法
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("userId", user.getUserId());
-        response.put("username", user.getUsername());
-        response.put("realName", user.getRealName());
-        response.put("role", user.getRole());
-        response.put("createTime", user.getCreateTime());
-        response.put("courseCount", courseCount); // 加入课程数
-        // response.put("homeworkCount", homeworkCount); 
-        
-        return response;
+    public ResponseEntity<?> getCurrentUserInfo() {
+        try {
+            org.springframework.security.core.Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth == null || "anonymousUser".equals(auth.getName())) {
+                return ResponseEntity.status(401).body(Map.of("code", 401, "message", "未登录"));
+            }
+            
+            String username = auth.getName();
+            User user = userRepository.findByUsername(username).orElse(null);
+            
+            if (user == null) {
+                 return ResponseEntity.status(401).body(Map.of("code", 401, "message", "用户不存在"));
+            }
+            
+            // 统计数据
+            int courseCount = studentCourseRepository.findByUserId(user.getUserId()).size();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("userId", user.getUserId());
+            response.put("username", user.getUsername());
+            response.put("realName", user.getRealName());
+            response.put("role", user.getRole());
+            response.put("createTime", user.getCreateTime());
+            response.put("courseCount", courseCount); 
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("code", 500, "message", e.getMessage()));
+        }
     }
     @PostMapping("/update")
     public String updateInfo(@RequestBody User tempUser) {

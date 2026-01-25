@@ -40,6 +40,8 @@ public class SecurityConfig {
                 // 因为你的前端 Vite 代理已经把 /api 删掉了，发到后端的是 /login, /auth/...
                 .requestMatchers("/auth/**", "/login", "/error").permitAll()
                 .requestMatchers("/course/list").permitAll()
+                // 👇 临时放开 /exam/my-list 以排查 500 错误
+                .requestMatchers("/exam/my-list").permitAll()
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex

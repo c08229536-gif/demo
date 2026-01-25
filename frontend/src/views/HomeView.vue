@@ -8,7 +8,7 @@
           
           <template v-if="userRole === 'student'">
             <el-menu-item index="/home/my-courses"><el-icon><Collection /></el-icon><span>我的课程</span></el-menu-item>
-            <el-menu-item index="/home/exam/1"><el-icon><Postcard /></el-icon><span>在线考试</span></el-menu-item>
+            <el-menu-item index="/home/my-exams"><el-icon><Postcard /></el-icon><span>在线考试</span></el-menu-item>
             <el-menu-item index="/home/my-assignment"><el-icon><EditPen /></el-icon><span>我的作业</span></el-menu-item>
           </template>
 

@@ -44,7 +44,12 @@ const router = createRouter({
           path: 'my-courses', 
           component: () => import('../views/MyCourse.vue') 
         },
-        // 5. 在线考试 (学生 - 新增)
+        // 5. 在线考试 (学生 - 列表)
+        {
+          path: 'my-exams',
+          component: () => import('../views/MyExamList.vue')
+        },
+        // 5.1 在线考试详情 (答题页)
         {
           path: 'exam/:id',
           name: 'exam-view',

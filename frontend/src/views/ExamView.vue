@@ -30,16 +30,25 @@
             <span style="color: #909399; font-weight: normal; font-size: 14px;">({{ q.score }}分)</span>
           </p>
           
-          <el-radio-group v-if="q.type === '单选'" v-model="answers[q.id]" style="display: flex; flex-direction: column; gap: 15px; margin-top: 15px;">
-            <el-radio v-for="(val, key) in parseOptions(q.options)" :key="key" :label="key">
+          <el-radio-group v-if="q.type === '单选' || q.type === 'single'" v-model="answers[q.id]" style="display: flex; flex-direction: column; gap: 15px; margin-top: 15px; align-items: flex-start;">
+            <el-radio v-for="(val, key) in parseOptions(q.options)" :key="key" :label="key" style="margin-left: 0;">
               {{ key }}. {{ val }}
             </el-radio>
           </el-radio-group>
 
-          <el-radio-group v-else-if="q.type === '判断'" v-model="answers[q.id]" style="margin-top: 15px;">
+          <el-radio-group v-else-if="q.type === '判断' || q.type === 'judge'" v-model="answers[q.id]" style="margin-top: 15px;">
             <el-radio label="正确">正确</el-radio>
             <el-radio label="错误">错误</el-radio>
           </el-radio-group>
+
+          <div v-else-if="q.type === '简答' || q.type === 'text'" style="margin-top: 15px;">
+             <el-input
+               v-model="answers[q.id]"
+               type="textarea"
+               :rows="4"
+               placeholder="请输入您的答案..."
+             />
+          </div>
         </div>
 
         <div style="text-align: center; margin-top: 30px;">
@@ -79,22 +88,68 @@ const fetchExamData = async () => {
     const res = await axios.get(`/api/exam/${examId}`)
     examInfo.value = res.data.info
     questions.value = res.data.questions
+    
+    // 初始化答案对象，防止 v-model 绑定问题
+    questions.value.forEach(q => {
+      if (!answers.value[q.id]) {
+        answers.value[q.id] = ''
+      }
+    })
+
     // 这里不直接倒计时，等用户点击
-    timeLeft.value = (res.data.info.duration || 60) * 60
+    // timeLeft.value = (res.data.info.duration || 60) * 60
+    
+    // 检查是否已经在考试中
+    autoStartIfResuming()
   } catch (error) {
     ElMessage.error('获取考试信息失败')
   }
 }
 
-const startExam = () => {
+const startExam = async () => {
+  // 如果已经开始过（继续考试），直接进入
+  if (isStarted.value) return
+
+  // 否则确认开始
   ElMessageBox.confirm('点击开始后将立即开始倒计时，确定现在开始吗？', '开始考试', {
      confirmButtonText: '立即开始',
      cancelButtonText: '稍后再来',
      type: 'info'
-  }).then(() => {
-     isStarted.value = true
-     startTimer()
+  }).then(async () => {
+     try {
+       // 调用后端开始接口，获取真实倒计时
+       const res = await axios.post('/api/exam/start', { examId: examInfo.value.id })
+       const { remainingSeconds, status } = res.data
+       
+       if (status === 1) {
+         ElMessage.warning('您已提交过该试卷')
+         router.push('/home/my-exams')
+         return
+       }
+       
+       timeLeft.value = remainingSeconds
+       isStarted.value = true
+       startTimer()
+       startAntiCheat() // 开启防作弊
+     } catch (e) {
+       ElMessage.error('开始考试失败')
+     }
   })
+}
+
+// 自动进入（如果是继续考试）
+const autoStartIfResuming = async () => {
+    try {
+       const res = await axios.post('/api/exam/start', { examId: examInfo.value.id })
+       const { remainingSeconds, status } = res.data
+       if (status === 0 && remainingSeconds < (examInfo.value.duration * 60)) {
+           // 说明已经在进行中了，自动继续
+           timeLeft.value = remainingSeconds
+           isStarted.value = true
+           startTimer()
+           startAntiCheat()
+       }
+    } catch(e){}
 }
 
 const handleDownload = (wordUrl) => {
@@ -102,6 +157,33 @@ const handleDownload = (wordUrl) => {
   const fileName = wordUrl.substring(wordUrl.lastIndexOf('/') + 1)
   const downloadUrl = `/api/upload/download?fileName=${fileName}`
   window.open(downloadUrl, '_self')
+}
+
+// 防作弊逻辑
+const startAntiCheat = () => {
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+}
+const handleVisibilityChange = async () => {
+  if (document.hidden && isStarted.value && !submitting.value) {
+     try {
+       await axios.post('/api/exam/switch-blur', { examId: examInfo.value.id })
+       ElMessage.warning({
+         message: '检测到切出考试界面，系统已记录！累计3次将自动交卷！',
+         duration: 5000
+       })
+       // 也可以在这里查询最新次数，如果 >=3 前端主动提交
+       // 但为了安全，最好是下一次心跳或者提交时后端拒绝，这里简单点前端判断
+       // 实际生产中建议后端通过WebSocket推送或者下一次请求返回强制提交指令
+       // 这里我们简单再查一次状态
+       const res = await axios.post('/api/exam/start', { examId: examInfo.value.id })
+       if (res.data.switchCount >= 3) {
+           ElMessageBox.alert('您切出界面次数过多，系统已自动交卷！', '强制交卷', {
+               confirmButtonText: '确定',
+               callback: () => autoSubmit()
+           })
+       }
+     } catch(e) {}
+  }
 }
 
 // 格式化时间
@@ -125,6 +207,7 @@ const startTimer = () => {
 
 // 解析JSON选项
 const parseOptions = (optStr) => {
+  if (!optStr) return {}
   try { return JSON.parse(optStr) } catch (e) { return {} }
 }
 
@@ -148,9 +231,13 @@ const autoSubmit = async () => {
   } finally {
     submitting.value = false
     clearInterval(timer)
+    document.removeEventListener('visibilitychange', handleVisibilityChange)
   }
 }
 
 onMounted(() => fetchExamData())
-onUnmounted(() => clearInterval(timer))
+onUnmounted(() => {
+    clearInterval(timer)
+    document.removeEventListener('visibilitychange', handleVisibilityChange)
+})
 </script>

@@ -201,6 +201,7 @@ public class AdminController {
         exam.setCourseId((Integer) payload.get("courseId"));
         exam.setTotalScore((Integer) payload.get("totalScore"));
         exam.setWordUrl((String) payload.get("wordUrl"));
+        exam.setState(1); // 核心修复：发布时自动设置为“已发布”状态
         Exam savedExam = examRepository.save(exam);
 
         List<Map<String, Object>> questions = (List<Map<String, Object>>) payload.get("questions");
@@ -361,6 +362,39 @@ public class AdminController {
                         score = Integer.parseInt(sMatcher.group(1));
                         content = content.replace(sMatcher.group(0), "").trim();
                     }
+
+                    // 核心修复：检查题目内容中是否混杂了选项（Inline Options）
+                    // 例如： "下列选项中，不属于...的是（ ） A. 逻辑推理 B. 语言表达..."
+                    // 我们需要提取出 A. ... B. ...
+                    // 策略：查找第一个 "A." 或 "A、" 的位置，如果存在，截断题目，并解析后续选项
+                    Matcher inlineOptMatcher = Pattern.compile("\\s+([A-Da-d])[\\.．、\\)]\\s*").matcher(content);
+                    if (inlineOptMatcher.find()) {
+                         int splitIndex = inlineOptMatcher.start();
+                         String optionsPart = content.substring(splitIndex);
+                         content = content.substring(0, splitIndex).trim(); // 截断题目内容
+                         
+                         // 解析 optionsPart
+                         // 使用更严谨的正则来切分选项
+                         String[] optSegments = optionsPart.split("\\s+(?=[A-Da-d][\\.．、\\)])");
+                         for (String seg : optSegments) {
+                             Matcher om = optPattern.matcher(seg.trim());
+                             if (om.find()) {
+                                 String k = om.group(1).toUpperCase();
+                                 String v = om.group(2).trim();
+                                 optionsMap.put(k, v);
+                             }
+                         }
+                         // 关键：如果解析出了选项，根据当前题型判断，如果没识别出题型，则默认为单选
+                         if (!optionsMap.isEmpty() && !current.containsKey("type")) {
+                             // 简单启发式：如果答案长度>1且不是单词，可能是多选，但Word解析很难拿到标准答案
+                             // 这里暂时保守一点：只有当它之前没被识别为其他题型时，才设为单选
+                             // 如果是“多项选择题”区域，currentSectionType已经是 "multi" 了 (假设有这个逻辑)
+                             // 目前代码只处理了 single/judge/text，没处理 multi
+                             // 如果未来支持多选，这里需要改。现在为了修复bug，先去掉强制覆盖，仅当没有type时设置
+                             current.put("type", "single");
+                         }
+                    }
+
                     current.put("content", content);
                     if (score != null) {
                         current.put("score", score);
