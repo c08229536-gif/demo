@@ -24,7 +24,7 @@ public class SecurityConfig {
     @Autowired
     private UserRepository userRepository; // 注入 UserRepository
 
-    // 🏆 这里的 Bean 定义必须存在，否则 AdminController 启动就会报错
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();

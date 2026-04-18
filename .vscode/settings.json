@@ -1,0 +1,7 @@
+{
+    "roo-code.aiProvider": "google",
+    "roo-code.googleGemini.apiKey": "你的新Key",
+    "roo-code.googleGemini.model": "gemini-3-pro-preview",
+    "roo-code.googleGemini.temperature": 0,
+    "maven.executable.path": "d:\\student system\\backend\\mvnw.cmd"
+}
