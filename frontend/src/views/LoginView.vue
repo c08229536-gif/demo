@@ -117,17 +117,121 @@ const handleForgotPassword = () => {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(135deg, #74ebd5 0%, #ACB6E5 100%);
+  /* 高级动态流光渐变背景 */
+  background: linear-gradient(-45deg, #1e3c72, #2a5298, #0f2027, #203a43);
+  background-size: 400% 400%;
+  animation: gradientBG 15s ease infinite;
+  overflow: hidden;
 }
+
+@keyframes gradientBG {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
 .login-box {
-  width: 400px;
-  padding: 40px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  width: 420px;
+  padding: 50px 40px;
+  /* 毛玻璃效果核心参数 */
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  /* 优雅的入场动画 */
+  animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.title { text-align: center; margin-bottom: 20px; color: #333; }
-.role-tabs { margin-bottom: 20px; }
-.action-btn { width: 100%; }
-.toggle-link { text-align: right; margin-top: 10px; }
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.title { 
+  text-align: center; 
+  margin-bottom: 30px; 
+  color: #ffffff; 
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.role-tabs { margin-bottom: 25px; }
+
+/* 覆盖 Element Plus Tabs 默认样式，适配透明背景 */
+:deep(.el-tabs__item) {
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+  transition: all 0.3s;
+}
+:deep(.el-tabs__item.is-active) {
+  color: #ffffff;
+  font-weight: 700;
+}
+:deep(.el-tabs__active-bar) {
+  background-color: #ffffff;
+  height: 3px;
+  border-radius: 3px;
+}
+:deep(.el-tabs__nav-wrap::after) {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* 覆盖输入框样式，匹配毛玻璃质感 */
+:deep(.el-input__wrapper) {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 10px;
+  transition: all 0.3s;
+}
+:deep(.el-input__wrapper:hover), :deep(.el-input__wrapper.is-focus) {
+  background-color: rgba(255, 255, 255, 0.25) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1) !important;
+}
+:deep(.el-input__inner) {
+  color: #ffffff !important;
+}
+:deep(.el-input__inner::placeholder) {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+/* 修改输入框前置图标颜色 */
+:deep(.el-input__prefix-inner) {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* 渐变质感登录按钮 */
+.action-btn { 
+  width: 100%; 
+  border-radius: 10px;
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  border: none;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: 1px;
+  height: 48px;
+  transition: transform 0.2s, box-shadow 0.2s;
+  color: #fff;
+}
+
+.action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(118, 75, 162, 0.4);
+}
+.action-btn:active {
+  transform: translateY(0);
+}
+
+.toggle-link { text-align: right; margin-top: 15px; }
+.toggle-link .el-link {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+  transition: color 0.3s;
+}
+.toggle-link .el-link:hover {
+  color: #ffffff;
+}
 </style>

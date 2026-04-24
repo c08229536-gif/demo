@@ -8,4 +8,6 @@ public interface CourseRepository extends JpaRepository<Course, Integer> {
     // 暂时不需要写代码，JPA 自带了 findAll() 方法
     // 查某状态的所有课 (给学生看 status=1)
     List<Course> findByStatus(Integer status);
+    List<Course> findByTeacherId(Integer teacherId);
+    List<Course> findByCourseIdIn(List<Integer> ids);
 }

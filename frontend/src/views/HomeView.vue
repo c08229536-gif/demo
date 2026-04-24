@@ -15,6 +15,7 @@
           <el-menu-item index="/home/feedback" v-if="userRole === 'student' || userRole === 'teacher'"><el-icon><ChatLineSquare /></el-icon><span>意见反馈</span></el-menu-item>
           
           <el-menu-item index="/home/grade-assignment" v-if="userRole === 'teacher'"><el-icon><Edit /></el-icon><span>作业批改</span></el-menu-item>
+          <el-menu-item index="/home/teacher-stats" v-if="userRole === 'teacher'"><el-icon><DataAnalysis /></el-icon><span>学情统计</span></el-menu-item>
           
           <template v-if="userRole === 'admin'">
             <el-menu-item index="/home/user-manage"><el-icon><UserFilled /></el-icon><span>用户管理</span></el-menu-item>
@@ -42,7 +43,16 @@
               </template>
               
               <div class="msg-list">
-                <h4 style="margin: 0 0 10px 0; border-bottom: 1px solid #eee; padding-bottom: 5px;">系统消息</h4>
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 10px;">
+                  <h4 style="margin: 0;">系统消息</h4>
+                  <el-button 
+                    v-if="userRole === 'admin'" 
+                    type="primary" 
+                    link 
+                    size="small" 
+                    @click="announcementDialogVisible = true"
+                  >发布公告</el-button>
+                </div>
                 <el-empty v-if="messages.length === 0" description="暂无消息" :image-size="50" />
                 <div v-else class="msg-scroll">
                   <div v-for="msg in messages" :key="msg.id" class="msg-item" @click="readMessage(msg)">
@@ -61,30 +71,57 @@
           </div>
         </el-header>
         
-        <el-main style="background: #f0f2f5;">
-          <router-view />
+        <el-main class="main-content">
+          <router-view v-slot="{ Component }">
+            <transition name="fade-transform" mode="out-in">
+              <component :is="Component" />
+            </transition>
+          </router-view>
         </el-main>
       </el-container>
     </el-container>
+
+    <!-- 发布公告对话框 -->
+    <el-dialog v-model="announcementDialogVisible" title="发布系统公告" width="500px">
+      <el-form :model="announcementForm" label-width="80px">
+        <el-form-item label="公告标题">
+          <el-input v-model="announcementForm.title" placeholder="例如：维护公告、新功能上线" />
+        </el-form-item>
+        <el-form-item label="公告内容">
+          <el-input v-model="announcementForm.content" type="textarea" :rows="5" placeholder="请输入具体的公告内容..." />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="announcementDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handlePublishAnnouncement">立即发布</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import { ElMessage } from 'element-plus'
 // 导入所有需要的图标
 import { 
   User, Reading, Collection, EditPen, Edit, 
   UserFilled, List, ChatLineSquare, Service, 
-  Bell, Picture, Monitor, Postcard 
+  Bell, Picture, Monitor, Postcard, DataAnalysis 
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
-const userRole = ref('')
 const realName = ref('')
 const unreadCount = ref(0)
 const messages = ref([])
+
+const userRole = ref('')
+const announcementDialogVisible = ref(false)
+const announcementForm = reactive({
+  title: '',
+  content: ''
+})
 
 const fetchUserInfo = async () => {
   try {
@@ -114,6 +151,23 @@ const readMessage = async (msg) => {
   }
 }
 
+// 发布公告
+const handlePublishAnnouncement = async () => {
+  if (!announcementForm.title || !announcementForm.content) {
+    return ElMessage.warning('请填写完整的标题和内容')
+  }
+  try {
+    await axios.post('/api/message/send-all', announcementForm)
+    ElMessage.success('公告已全量发布')
+    announcementDialogVisible.value = false
+    announcementForm.title = ''
+    announcementForm.content = ''
+    fetchMessages() // 刷新列表
+  } catch (error) {
+    ElMessage.error('发布失败')
+  }
+}
+
 const logout = () => {
   localStorage.removeItem('token')
   localStorage.removeItem('userRole')
@@ -123,23 +177,119 @@ const logout = () => {
 onMounted(() => {
   fetchUserInfo()
   fetchMessages()
+  // 监听用户信息更新通知
+  window.addEventListener('user-info-updated', fetchUserInfo)
+})
+
+onUnmounted(() => {
+  // 页面销毁时记得移除监听，防止内存泄漏
+  window.removeEventListener('user-info-updated', fetchUserInfo)
 })
 </script>
 
 <style scoped>
-.common-layout { height: 100vh; }
-.aside { background-color: #304156; color: white; }
-.logo { height: 60px; line-height: 60px; text-align: center; font-size: 20px; font-weight: bold; background: #2b3649; }
-.header { background: #fff; border-bottom: 1px solid #ddd; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
-.header-right { display: flex; align-items: center; }
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
 
-/* 消息样式 */
-.bell-wrapper { margin-right: 20px; display: flex; align-items: center; height: 100%; }
-.msg-scroll { max-height: 300px; overflow-y: auto; }
-.msg-item { padding: 10px; border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: background 0.2s; }
-.msg-item:hover { background: #f9f9f9; }
-.msg-title { font-size: 14px; font-weight: bold; color: #333; display: flex; align-items: center; }
-.msg-content { font-size: 13px; color: #666; margin-top: 5px; line-height: 1.4; }
-.msg-time { font-size: 12px; color: #999; margin-top: 5px; text-align: right; }
-.dot { color: #f56c6c; margin-right: 5px; font-size: 12px; }
+.common-layout { height: 100vh; overflow: hidden; background: var(--bg-color); }
+
+/* 侧边栏：深色高质感 */
+.aside { 
+  background-color: #111827; /* 现代深灰 */
+  color: white; 
+  box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+  z-index: 10;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.logo { 
+  height: 64px; 
+  line-height: 64px; 
+  text-align: center; 
+  font-size: 20px; 
+  font-weight: 700; 
+  letter-spacing: 1px;
+  background: #1f2937;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  animation: slideIn 0.5s ease-out;
+}
+
+/* 侧边菜单深度覆盖，实现圆角、悬浮和活动状态高亮 */
+:deep(.el-menu) {
+  border-right: none !important;
+  background: transparent !important;
+}
+:deep(.el-menu-item) {
+  margin: 4px 12px;
+  border-radius: 8px;
+  height: 48px;
+  line-height: 48px;
+  transition: all 0.3s;
+  color: #d1d5db !important; /* 字体默认为浅灰 */
+}
+:deep(.el-menu-item:hover) {
+  background-color: rgba(255,255,255,0.08) !important;
+  transform: translateX(4px);
+  color: #fff !important;
+}
+:deep(.el-menu-item.is-active) {
+  background-color: var(--primary-color) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+/* 顶部导航：玻璃态与微阴影 */
+.header { 
+  background: rgba(255, 255, 255, 0.85); 
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(229, 231, 235, 0.5); 
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between; 
+  padding: 0 24px; 
+  height: 64px;
+  z-index: 5;
+}
+.header-right { display: flex; align-items: center; font-weight: 500; font-size: 15px;}
+
+/* 消息铃铛悬停动效 */
+.bell-wrapper { 
+  margin-right: 24px; 
+  display: flex; 
+  align-items: center; 
+  height: 100%; 
+  transition: transform 0.2s; 
+}
+.bell-wrapper:hover { transform: scale(1.1); }
+
+/* 主区域背景 */
+.main-content {
+  background: var(--bg-color);
+  padding: 24px;
+}
+
+/* 下拉消息弹窗美化 */
+.msg-scroll { max-height: 320px; overflow-y: auto; padding: 0 8px; }
+.msg-item { 
+  padding: 12px; 
+  border-bottom: 1px solid #f3f4f6; 
+  cursor: pointer; 
+  border-radius: 8px;
+  transition: all 0.2s; 
+  margin-bottom: 4px;
+}
+.msg-item:last-child { border-bottom: none; }
+.msg-item:hover { 
+  background: #f8fafc; 
+  transform: translateY(-1px); 
+  box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+}
+.msg-title { font-size: 14px; font-weight: 600; color: #1e293b; display: flex; align-items: center; }
+.msg-content { font-size: 13px; color: #64748b; margin-top: 6px; line-height: 1.5; }
+.msg-time { font-size: 12px; color: #94a3b8; margin-top: 8px; text-align: right; }
+.dot { color: #ef4444; margin-right: 6px; font-size: 12px; }
 </style>

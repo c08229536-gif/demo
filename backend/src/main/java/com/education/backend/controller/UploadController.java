@@ -1,5 +1,6 @@
 package com.education.backend.controller;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
@@ -18,20 +19,22 @@ import java.util.UUID;
 @RequestMapping("/upload")
 public class UploadController {
 
-    // 上传接口 (保持不变)
+    @Value("${file.upload-dir}")
+    private String uploadDir;
+
+    // 上传接口
     @PostMapping("/file")
     public String uploadFile(@RequestParam("file") MultipartFile file) {
         if (file.isEmpty()) throw new RuntimeException("文件为空");
         try {
-            String projectPath = System.getProperty("user.dir");
-            File uploadDir = new File(projectPath + "/uploads");
-            if (!uploadDir.exists()) uploadDir.mkdirs();
+            File uploadFolder = new File(uploadDir);
+            if (!uploadFolder.exists()) uploadFolder.mkdirs();
 
             String originalFilename = file.getOriginalFilename();
             String suffix = originalFilename.substring(originalFilename.lastIndexOf("."));
             String newFileName = UUID.randomUUID().toString() + suffix;
 
-            File dest = new File(uploadDir, newFileName);
+            File dest = new File(uploadFolder, newFileName);
             file.transferTo(dest);
 
             return "/uploads/" + newFileName;
@@ -46,7 +49,7 @@ public class UploadController {
     public ResponseEntity<Resource> download(@RequestParam String fileName) {
         try {
             // 1. 定位文件路径
-            Path filePath = Paths.get(System.getProperty("user.dir") + "/uploads/" + fileName);
+            Path filePath = Paths.get(uploadDir).resolve(fileName);
             Resource resource = new UrlResource(filePath.toUri());
 
             if (resource.exists() || resource.isReadable()) {

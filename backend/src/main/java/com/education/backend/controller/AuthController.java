@@ -70,6 +70,11 @@ public class AuthController {
             response.put("username", user.getUsername());
             response.put("realName", user.getRealName());
             response.put("role", user.getRole());
+            response.put("avatar", user.getAvatar());
+            response.put("phone", user.getPhone());
+            response.put("email", user.getEmail());
+            response.put("studentNo", user.getStudentNo());
+            response.put("balance", user.getBalance());
             response.put("createTime", user.getCreateTime());
             response.put("courseCount", courseCount); 
             
@@ -85,10 +90,12 @@ public class AuthController {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("用户不存在"));
 
-        // 只允许更新这三个字段，防止用户篡改 ID 或 角色
+        // 只允许更新允许修改的字段，防止用户篡改 ID 或 角色
         if (tempUser.getPhone() != null) user.setPhone(tempUser.getPhone());
         if (tempUser.getEmail() != null) user.setEmail(tempUser.getEmail());
         if (tempUser.getStudentNo() != null) user.setStudentNo(tempUser.getStudentNo());
+        if (tempUser.getAvatar() != null) user.setAvatar(tempUser.getAvatar());
+        if (tempUser.getRealName() != null) user.setRealName(tempUser.getRealName());
         
         userRepository.save(user);
         return "资料更新成功！";

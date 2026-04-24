@@ -154,6 +154,12 @@ public class AssignmentController {
 
     @GetMapping("/all")
     public List<Assignment> getAllAssignments() {
-        return assignmentRepository.findAll();
+        List<Assignment> assignments = assignmentRepository.findAll();
+        for (Assignment a : assignments) {
+            // 统计该作业下状态为 "已提交" 的记录数
+            int count = submissionRepository.countByAssignmentIdAndStatus(a.getId(), "已提交");
+            a.setPendingCount(count);
+        }
+        return assignments;
     }
 }

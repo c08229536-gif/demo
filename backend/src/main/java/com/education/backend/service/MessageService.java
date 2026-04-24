@@ -9,4 +9,5 @@ public interface MessageService {
     int getUnreadCount(Integer userId);
 
     void markAsRead(Integer id);
+    void sendToAll(String title, String content);
 }

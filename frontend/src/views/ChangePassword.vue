@@ -6,11 +6,11 @@
 
       <el-form :model="form" :rules="rules" ref="formRef" label-width="100px" style="margin-top: 30px;">
         <el-form-item label="新密码" prop="newPassword">
-          <el-input v-model="form.newPassword" type="password" show-password placeholder="请输入新密码"></el-input>
+          <el-input v-model="form.newPassword" type="password" show-password placeholder="请输入新密码" autocomplete="new-password"></el-input>
         </el-form-item>
 
         <el-form-item label="确认密码" prop="confirmPassword">
-          <el-input v-model="form.confirmPassword" type="password" show-password placeholder="请再次输入新密码"></el-input>
+          <el-input v-model="form.confirmPassword" type="password" show-password placeholder="请再次输入新密码" autocomplete="new-password"></el-input>
         </el-form-item>
 
         <el-form-item>

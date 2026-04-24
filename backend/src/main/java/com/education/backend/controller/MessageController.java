@@ -37,4 +37,17 @@ public class MessageController {
         messageService.markAsRead(id);
         return "success";
     }
+
+    @PostMapping("/send-all")
+    public String sendToAll(@RequestBody SysMessage payload) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userService.findByUsername(username);
+        
+        if (!"admin".equals(user.getRole())) {
+            throw new RuntimeException("只有管理员可以发布公告");
+        }
+        
+        messageService.sendToAll(payload.getTitle(), payload.getContent());
+        return "公告发布成功！";
+    }
 }

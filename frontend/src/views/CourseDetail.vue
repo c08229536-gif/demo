@@ -28,7 +28,18 @@
         </div>
 
         <div class="video-player">
-          <video v-if="currentVideoUrl" :src="currentVideoUrl" controls autoplay class="real-video" @ended="handleVideoEnded"></video>
+          <video 
+            v-if="currentVideoUrl" 
+            ref="videoRef"
+            :key="currentChapterId" 
+            :src="currentVideoUrl" 
+            controls 
+            autoplay 
+            class="real-video" 
+            @ended="handleVideoEnded" 
+            @error="handleVideoError"
+            @loadedmetadata="onMetadataLoaded"
+          ></video>
           <div v-else class="placeholder">
             <el-icon size="60"><VideoPlay /></el-icon>
             <p>请点击右侧目录选择章节播放</p>
@@ -197,15 +208,25 @@
         <el-card style="margin-top: 20px;">
           <h3>课程目录</h3>
           <div v-if="chapters.length > 0" class="chapter-list">
-            <div v-for="(item, index) in chapters" :key="item.chapterId" class="chapter-item" :class="{ 'active': currentVideoUrl === item.videoUrl }">
-              <div class="chapter-info" @click="playVideo(item.videoUrl)">
+            <div v-for="(item, index) in chapters" :key="item.chapterId" class="chapter-item" :class="{ 'active': currentChapterId === item.chapterId }">
+              <div class="chapter-info" @click="playVideo(item)">
                 <el-icon v-if="finishedChapterIds.includes(item.chapterId)" color="#67C23A" size="20"><Check /></el-icon>
                 <el-icon v-else><VideoPlay /></el-icon>
                 <span style="margin-left: 8px;">第{{ index + 1 }}章：{{ item.title }}</span>
               </div>
-              <el-button v-if="userRole === 'student' && isEnrolled && !finishedChapterIds.includes(item.chapterId)" type="primary" link size="small" @click.stop="markAsFinished(item)">标记学完</el-button>
-              <span v-else-if="finishedChapterIds.includes(item.chapterId)" style="font-size: 12px; color: #67C23A;">已完成</span>
-              <el-icon v-if="userRole === 'student' && !isEnrolled" color="#909399"><Lock /></el-icon>
+              <div class="chapter-ops">
+                <el-button 
+                  v-if="userRole === 'teacher' || userRole === 'admin'" 
+                  type="primary" link size="small" 
+                  @click.stop="handleEditChapter(item)"
+                >
+                  <el-icon><Edit /></el-icon>编辑
+                </el-button>
+
+                <el-button v-if="userRole === 'student' && isEnrolled && !finishedChapterIds.includes(item.chapterId)" type="primary" link size="small" @click.stop="markAsFinished(item)">标记学完</el-button>
+                <span v-else-if="finishedChapterIds.includes(item.chapterId)" style="font-size: 12px; color: #67C23A;">已完成</span>
+                <el-icon v-if="userRole === 'student' && !isEnrolled" color="#909399"><Lock /></el-icon>
+              </div>
             </div>
           </div>
           <el-empty v-else description="暂无章节" :image-size="60" />
@@ -305,13 +326,32 @@
 
     <input type="file" ref="fileInput" @change="handleFileSelectForExam" style="display: none" accept=".xlsx, .xls" />
 
-    <el-dialog v-model="chapterDialogVisible" title="添加章节" width="500px">
+    <el-dialog v-model="chapterDialogVisible" :title="newChapter.chapterId ? '编辑章节' : '添加章节'" width="500px">
       <el-form label-width="80px">
         <el-form-item label="标题"><el-input v-model="newChapter.title" /></el-form-item>
-        <el-form-item label="链接"><el-input v-model="newChapter.videoUrl" /></el-form-item>
+        <el-form-item label="视频">
+          <el-upload
+            class="upload-demo"
+            action="/api/upload/file"
+            :show-file-list="false"
+            :on-success="handleChapterVideoUploadSuccess"
+            accept="video/*"
+          >
+            <el-button type="success" size="small" icon="Upload">点击上传新视频</el-button>
+            <template #tip>
+              <div class="el-upload__tip" style="font-size: 12px; color: #999; margin-top: 5px;">
+                当前路径: {{ newChapter.videoUrl || '未配置视频' }}
+              </div>
+            </template>
+          </el-upload>
+        </el-form-item>
+        <el-form-item label="链接"><el-input v-model="newChapter.videoUrl" placeholder="上传后自动填入，也可手动输入" /></el-form-item>
         <el-form-item label="排序"><el-input-number v-model="newChapter.sortOrder" :min="1" /></el-form-item>
       </el-form>
-      <template #footer><el-button @click="chapterDialogVisible=false">取消</el-button><el-button type="primary" @click="handleAddChapter">确认</el-button></template>
+      <template #footer>
+        <el-button @click="chapterDialogVisible=false">取消</el-button>
+        <el-button type="primary" @click="handleAddChapter">确认保存</el-button>
+      </template>
     </el-dialog>
 
     <input type="file" ref="fileInput" @change="handleFileSelectForExam" style="display: none" accept=".xlsx, .xls" />
@@ -439,7 +479,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted, onUnmounted, reactive } from 'vue'
 import { useRoute } from 'vue-router'
 import { VideoPlay, Edit, VideoCamera, Check, Upload, Document, UploadFilled, CircleCheckFilled, Lock, Warning, DocumentAdd, Plus, Camera } from '@element-plus/icons-vue'
 import axios from 'axios'
@@ -454,8 +494,12 @@ const studentList = ref([])
 const qaList = ref([])
 const userRole = ref('')
 const currentVideoUrl = ref('')
+const currentChapterId = ref(null)
 const finishedChapterIds = ref([])
 const activeTab = ref('resources') // 默认看资料
+const videoRef = ref(null)
+const progressTimer = ref(null)
+const pendingSeekTime = ref(0)
 
 // 支付相关变量
 const isEnrolled = ref(false)
@@ -724,13 +768,84 @@ const markAsFinished = async (chapter) => {
     finishedChapterIds.value.push(chapter.chapterId)
   } catch (e) {}
 }
-const playVideo = (url) => { 
+
+const playVideo = async (chapter) => { 
   if(!isEnrolled.value && userRole.value === 'student') return ElMessage.warning('请先购买课程再观看视频')
-  if(url) currentVideoUrl.value = url 
+  
+  const url = (chapter.videoUrl && chapter.videoUrl !== 'null') ? chapter.videoUrl : null
+  
+  if(url) {
+    // 1. 先重置跳转时间
+    pendingSeekTime.value = 0
+    
+    // 2. 先异步获取进度，确保在视频加载前 pendingSeekTime 已就绪
+    try {
+      const res = await axios.get(`/api/course/chapter/${chapter.chapterId}/progress`)
+      if (res.data && res.data.lastPosition) {
+        pendingSeekTime.value = res.data.lastPosition
+      }
+    } catch (e) {}
+
+    // 3. 设置 URL 和 ID，触发 video 标签重新渲染和加载
+    currentVideoUrl.value = url 
+    currentChapterId.value = chapter.chapterId
+    
+    // 4. 开启进度保存定时器
+    startProgressTimer()
+  } else {
+    ElMessage.warning('该章节暂未配置视频链接')
+  }
+}
+
+const onMetadataLoaded = (e) => {
+  if (pendingSeekTime.value > 0) {
+    // 稍微延迟 200ms 确保播放器状态完全就绪后再进行跳转
+    setTimeout(() => {
+      if (videoRef.value) {
+        videoRef.value.currentTime = pendingSeekTime.value
+        pendingSeekTime.value = 0
+      }
+    }, 200)
+  }
+}
+
+const startProgressTimer = () => {
+  if (progressTimer.value) clearInterval(progressTimer.value)
+  progressTimer.value = setInterval(() => {
+    saveCurrentProgress()
+  }, 10000) 
+}
+
+const saveCurrentProgress = async () => {
+  if (!videoRef.value || !currentChapterId.value) return
+  
+  const currentTime = videoRef.value.currentTime
+  const duration = videoRef.value.duration
+  if (!duration || videoRef.value.paused) return
+  
+  const percent = Math.floor((currentTime / duration) * 100)
+  
+  try {
+    await axios.post('/api/course/progress', {
+      courseId: parseInt(route.params.id),
+      chapterId: currentChapterId.value,
+      lastPosition: currentTime,
+      progressPercent: percent
+    })
+  } catch (e) {}
+}
+
+const handleVideoError = () => {
+  ElMessage.error('视频加载失败，请检查链接是否有效或视频文件是否存在')
+}
+
+const handleChapterVideoUploadSuccess = (response) => {
+  newChapter.value.videoUrl = response
+  ElMessage.success('视频上传成功！')
 }
 const handleVideoEnded = () => {
   if (userRole.value === 'teacher') return
-  const currentChapter = chapters.value.find(c => c.videoUrl === currentVideoUrl.value)
+  const currentChapter = chapters.value.find(c => c.chapterId === currentChapterId.value)
   if (currentChapter && !finishedChapterIds.value.includes(currentChapter.chapterId)) {
     markAsFinished(currentChapter)
     ElMessage.success('自动打卡成功')
@@ -743,8 +858,21 @@ const handlePublishAssignment = async () => {
 }
 const handleAddChapter = async () => {
   if (!newChapter.value.title) return ElMessage.warning('标题不能为空')
-  try { await axios.post('/api/course/chapter/add', newChapter.value); ElMessage.success('添加成功'); chapterDialogVisible.value=false; fetchChapters(course.value.courseId) } 
-  catch(e) { ElMessage.error('添加失败') }
+  try { 
+    await axios.post('/api/course/chapter/add', newChapter.value)
+    ElMessage.success(newChapter.value.chapterId ? '修改成功' : '添加成功')
+    chapterDialogVisible.value = false
+    // 重置表单
+    newChapter.value = { title: '', videoUrl: '', sortOrder: 1, courseId: parseInt(route.params.id) }
+    fetchChapters(course.value.courseId) 
+  } catch(e) { 
+    ElMessage.error('保存失败') 
+  }
+}
+
+const handleEditChapter = (item) => {
+  newChapter.value = { ...item }
+  chapterDialogVisible.value = true
 }
 
 // ==== 封面上传相关 ====
@@ -782,7 +910,9 @@ const handleUpdateCover = async () => {
 
   } catch (error) {
     console.error(error)
-    ElMessage.error(error.response?.data || '封面更新失败')
+    const errData = error.response?.data
+    const errMsg = (typeof errData === 'string' && errData) ? errData : (errData?.message || '封面更新失败')
+    ElMessage.error(errMsg)
   }
 }
 
@@ -876,6 +1006,10 @@ const handleFileSelectForExam = (event) => {
   reader.readAsArrayBuffer(file)
 }
 
+onUnmounted(() => {
+  if (progressTimer.value) clearInterval(progressTimer.value)
+})
+
 onMounted(() => { init() })
 </script>
 
@@ -885,13 +1019,14 @@ onMounted(() => { init() })
 .teacher-info { display: flex; align-items: center; gap: 15px; }
 .course-cover-container {
   width: 100%;
-  height: 250px; /* 或者你想要的高度 */
   margin-bottom: 20px;
   position: relative;
 }
 .course-cover-image {
   width: 100%;
-  height: 100%;
+  height: 350px;
+  object-fit: cover;
+  display: block;
   border-radius: 8px;
 }
 .change-cover-btn {
@@ -914,7 +1049,8 @@ onMounted(() => { init() })
 .chapter-item { padding: 12px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; cursor: pointer;}
 .chapter-item:hover { background: #f5f7fa; }
 .chapter-item.active { background: #e6f7ff; color: #409EFF; }
-.chapter-info { display: flex; align-items: center; flex: 1; }
+.chapter-info { display: flex; align-items: center; flex: 1; cursor: pointer; }
+.chapter-ops { display: flex; align-items: center; gap: 10px; }
 
 .qa-list { margin-top: 10px; }
 .qa-item { padding: 15px 0; border-bottom: 1px solid #eee; }

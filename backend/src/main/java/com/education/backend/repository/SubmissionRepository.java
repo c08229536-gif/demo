@@ -13,5 +13,6 @@ public interface SubmissionRepository extends JpaRepository<HomeworkSubmission, 
 
     List<HomeworkSubmission> findByAssignmentId(Integer assignmentId);
 
+    int countByAssignmentIdAndStatus(Integer assignmentId, String status);
     
 }

@@ -14,15 +14,6 @@ public class Assignment {
 
     private String title;
 
-    // 状态：不存数据库，临时计算
-    @Transient
-    private String status = "待提交"; 
-
-    // 👇 新增：分数
-    // 同样不存数据库，只在查列表时临时用来展示
-    @Transient
-    private Integer score;
-
     private String description;
     
     @Column(name = "course_id")
@@ -30,6 +21,18 @@ public class Assignment {
 
     private LocalDateTime deadline;
 
+    @Column(name = "create_time")
+    private LocalDateTime createTime;
+
+    @Transient
+    private String status; // 待提交, 已提交, 已批改
+
+    @Transient
+    private Integer score;
+
     @Transient
     private String feedback;
+
+    @Transient
+    private Integer pendingCount; 
 }

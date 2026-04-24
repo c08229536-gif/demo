@@ -161,8 +161,30 @@ public class CourseServiceImpl implements CourseService {
     public void updateProgress(CourseProgress p) {
         CourseProgress existing = progressRepository.findByUserIdAndChapterId(p.getUserId(), p.getChapterId())
                 .orElse(p);
-        existing.setProgressPercent(p.getProgressPercent());
-        existing.setIsFinished(p.getProgressPercent() >= 100 ? 1 : 0);
+        
+        if (p.getProgressPercent() != null) {
+            existing.setProgressPercent(p.getProgressPercent());
+            existing.setIsFinished(p.getProgressPercent() >= 100 ? 1 : 0);
+        }
+        
+        if (p.getLastPosition() != null) {
+            existing.setLastPosition(p.getLastPosition());
+        }
+        
         progressRepository.save(existing);
+    }
+
+    @Override
+    public CourseProgress getChapterProgress(Integer userId, Integer chapterId) {
+        return progressRepository.findByUserIdAndChapterId(Long.valueOf(userId), Long.valueOf(chapterId))
+                .orElse(null);
+    }
+
+    @Override
+    public void deleteCourse(Integer courseId) {
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new RuntimeException("课程不存在"));
+        course.setStatus(-1); // -1 表示逻辑删除
+        courseRepository.save(course);
     }
 }

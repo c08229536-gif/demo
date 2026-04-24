@@ -98,6 +98,10 @@ const router = createRouter({
         { 
           path: 'exam-manage', 
           component: () => import('../views/ExamManage.vue') 
+        },
+        {
+          path: 'teacher-stats',
+          component: () => import('../views/TeacherStats.vue')
         }
       ]
     }
@@ -117,7 +121,8 @@ router.beforeEach((to, from, next) => {
   }
 
   // 教师页面拦截
-  if (to.path.includes('/grade-assignment')) { 
+  const teacherRoutes = ['/grade-assignment', '/teacher-stats', '/exam-manage']
+  if (teacherRoutes.some(path => to.path.includes(path))) { 
     if (role === 'student') {
       return next('/home/courses')
     }

@@ -14,6 +14,7 @@ public class CourseProgress {
     private Long courseId;
     private Long chapterId;
     private Integer progressPercent;
+    private Double lastPosition; // 上次播放时间点（秒）
     private Integer isFinished; // 对应 TINYINT(1)
     @Column(insertable = false, updatable = false)
     private LocalDateTime updateTime;

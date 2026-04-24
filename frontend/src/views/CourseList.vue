@@ -55,7 +55,7 @@
       <el-col :span="6" v-for="course in filteredList" :key="course.courseId" style="margin-bottom: 20px;">
         <el-card :body-style="{ padding: '0px' }" shadow="hover" class="course-card">
           <div class="img-wrapper">
-             <img :src="course.cover || 'https://via.placeholder.com/300x160?text=No+Cover'" class="image" />
+             <img :src="getCoverUrl(course.cover)" class="image" />
              <span class="category-tag">{{ course.category || '其他' }}</span>
           </div>
           
@@ -78,9 +78,20 @@
               <span class="teacher">
                 <el-icon><UserIcon /></el-icon> {{ course.teacher }}
               </span>
-              <el-button type="primary" plain size="small" @click="$router.push(`/home/course/${course.courseId}`)">
-                进入学习
-              </el-button>
+              <div style="display: flex; gap: 5px;">
+                <el-button type="primary" plain size="small" @click="$router.push(`/home/course/${course.courseId}`)">
+                  进入学习
+                </el-button>
+                <el-button 
+                  v-if="userRole === 'admin' || (userId && userId === course.teacherId)"
+                  type="danger" 
+                  plain 
+                  size="small" 
+                  @click.stop="handleDelete(course)"
+                >
+                  删除
+                </el-button>
+              </div>
             </div>
           </div>
         </el-card>
@@ -113,7 +124,15 @@
           <el-input v-model="newCourse.description" type="textarea" :rows="3" placeholder="简单介绍一下课程" />
         </el-form-item>
         <el-form-item label="封面图片">
-          <el-input v-model="newCourse.cover" placeholder="请输入图片URL (可选)" />
+          <el-upload
+            class="avatar-uploader"
+            action="/api/upload"
+            :show-file-list="false"
+            :on-success="handleUploadSuccess"
+          >
+            <img v-if="newCourse.cover" :src="getCoverUrl(newCourse.cover)" class="avatar" />
+            <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
+          </el-upload>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -131,7 +150,7 @@
 import { ref, onMounted } from 'vue'
 import { Search, Plus, User as UserIcon } from '@element-plus/icons-vue' // 👈 注意：这里重命名 User 图标防止冲突
 import axios from 'axios'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 // --- 数据响应式变量 ---
 const searchText = ref('')
@@ -142,6 +161,7 @@ const bannerList = ref([]) // 存储轮播图数据
 const loading = ref(false)
 const dialogVisible = ref(false)
 const userRole = ref('') 
+const userId = ref(null) 
 
 const newCourse = ref({
   title: '',
@@ -168,6 +188,7 @@ const fetchUserInfo = async () => {
   try {
     const res = await axios.get('/api/auth/me')
     userRole.value = res.data.role
+    userId.value = res.data.userId
   } catch (error) {
     console.error('获取用户信息失败')
   }
@@ -205,7 +226,17 @@ const filterCourses = () => {
   filteredList.value = result
 }
 
-// 5. 教师发布课程
+const handleUploadSuccess = (res) => {
+  newCourse.value.cover = res
+  ElMessage.success('图片上传成功')
+}
+
+const getCoverUrl = (url) => {
+  if (!url) return 'https://via.placeholder.com/300x180?text=No+Cover'
+  if (url.startsWith('http')) return url
+  return `http://localhost:8080${url.startsWith('/') ? '' : '/'}${url}`
+}
+
 const handlePublish = async () => {
   if (!newCourse.value.title) return ElMessage.warning('请填写课程标题')
   
@@ -213,20 +244,37 @@ const handlePublish = async () => {
     await axios.post('/api/course/add', newCourse.value)
     ElMessage.success('发布申请已提交，等待审核！') 
     dialogVisible.value = false 
-    // 重置表单
     newCourse.value = { title: '', teacher: '', description: '', cover: '', category: '后端' }
-    fetchCourses() // 重新加载数据
+    fetchCourses() 
   } catch (error) {
     ElMessage.error('发布失败，请检查网络')
   }
 }
 
-// 6. 轮播图跳转
+const handleDelete = (course) => {
+  ElMessageBox.confirm(
+    `确定要删除课程《${course.title}》吗？删除后不可恢复。`,
+    '警告',
+    {
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+    }
+  ).then(async () => {
+    try {
+      await axios.delete(`/api/course/${course.courseId}`)
+      ElMessage.success('课程已删除')
+      fetchCourses() 
+    } catch (error) {
+      ElMessage.error('删除失败')
+    }
+  }).catch(() => {})
+}
+
 const handleBannerClick = (url) => {
   if (url) window.open(url, '_blank')
 }
 
-// --- 生命周期挂载 ---
 onMounted(() => {
   fetchUserInfo()
   fetchCourses()
@@ -235,7 +283,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 轮播图区域 */
 .carousel-container {
   margin-bottom: 30px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
@@ -262,7 +309,6 @@ onMounted(() => {
 }
 .banner-info h3 { margin: 0; font-size: 18px; }
 
-/* 顶部操作区 */
 .header-actions {
   display: flex;
   justify-content: space-between;
@@ -270,7 +316,6 @@ onMounted(() => {
 }
 .search-input { width: 320px; }
 
-/* 课程分类标签 */
 .category-tabs {
   margin-bottom: 25px;
   background: #fff;
@@ -282,7 +327,6 @@ onMounted(() => {
 }
 .label { font-weight: bold; color: #333; margin-right: 15px; }
 
-/* 课程卡片 */
 .course-card {
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   border: none;
@@ -350,5 +394,37 @@ onMounted(() => {
   height: 100%;
   background: #f5f7fa;
   color: #909399;
+}
+
+/* 上传组件样式 */
+.avatar-uploader {
+  border: 1px dashed #d9d9d9;
+  border-radius: 6px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  width: 178px;
+  height: 178px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: border-color 0.3s;
+}
+.avatar-uploader:hover {
+  border-color: #409eff;
+}
+.avatar-uploader-icon {
+  font-size: 28px;
+  color: #8c939d;
+  width: 178px;
+  height: 178px;
+  line-height: 178px;
+  text-align: center;
+}
+.avatar {
+  width: 178px;
+  height: 178px;
+  display: block;
+  object-fit: cover;
 }
 </style>

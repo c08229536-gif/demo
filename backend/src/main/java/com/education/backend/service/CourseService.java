@@ -37,4 +37,8 @@ public interface CourseService {
 
     // for progress
     void updateProgress(CourseProgress p);
+
+    CourseProgress getChapterProgress(Integer userId, Integer chapterId);
+
+    void deleteCourse(Integer courseId);
 }

@@ -13,8 +13,11 @@
           <el-menu @select="handleSelectAssignment" class="assignment-menu">
             <el-empty v-if="assignmentList.length === 0" description="暂无发布作业" image-size="60" />
             <el-menu-item v-for="item in assignmentList" :key="item.id" :index="item.id.toString()">
-              <el-icon><Document /></el-icon>
+              <el-icon :style="{ color: item.pendingCount > 0 ? '#E6A23C' : '#67C23A' }">
+                <Document />
+              </el-icon>
               <span class="menu-title" :title="item.title">{{ item.title }}</span>
+              <el-badge v-if="item.pendingCount > 0" :value="item.pendingCount" class="pending-badge" type="danger" />
             </el-menu-item>
           </el-menu>
         </el-card>
@@ -183,6 +186,12 @@ const handleGrade = async () => {
     currentSubmission.value.score = currentSubmission.value.tempScore
     currentSubmission.value.feedback = currentSubmission.value.tempFeedback
     currentSubmission.value.status = '已批改' // 👇 更新状态标签
+
+    // 👇 实时更新左侧列表的待批改数量
+    const assignment = assignmentList.value.find(a => a.id.toString() === currentAssignmentId.value)
+    if (assignment && assignment.pendingCount > 0) {
+      assignment.pendingCount--
+    }
   } catch (error) {
     ElMessage.error('打分失败')
   }
@@ -201,7 +210,19 @@ onMounted(() => {
   overflow: hidden; 
   text-overflow: ellipsis; 
   display: inline-block; 
-  width: 180px;
+  width: 140px;
+  color: #333;
+  font-weight: 500;
+}
+.pending-badge {
+  margin-left: 5px;
+}
+.el-menu-item.is-active .menu-title {
+  color: var(--el-color-primary);
+  font-weight: bold;
+}
+.el-menu-item:hover {
+  background-color: #f0f7ff !important;
 }
 .content-preview {
   font-size: 13px;
